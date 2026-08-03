@@ -210,8 +210,15 @@ class TripAttributes {
   final String category;
   final String categoryLabel;
 
-  /// Binario di partenza (lettura OCR best-effort, da verificare — §README).
+  /// Binario di partenza. Da Bari Centrale è lettura OCR best-effort (R-09,
+  /// vedi [platformVerified]); da Modugno è dichiarato con certezza dalla
+  /// fonte ("tutti i treni verso Bari partono dal binario 1 di Modugno").
   final String? departurePlatform;
+
+  /// `false` solo quando [departurePlatform] viene da `platform_bari_centrale`
+  /// (OCR non verificabile con fonti esterne, R-09 — chiusa come limite noto,
+  /// soggetta comunque a variazione operativa in stazione). `true` altrimenti.
+  final bool platformVerified;
 
   final List<IntermediateStop> intermediateStops;
   final bool reservationRequired;
@@ -225,6 +232,7 @@ class TripAttributes {
     required this.category,
     required this.categoryLabel,
     this.departurePlatform,
+    this.platformVerified = true,
     this.intermediateStops = const [],
     this.reservationRequired = false,
     this.strikeGuaranteed = false,

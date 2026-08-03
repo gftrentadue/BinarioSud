@@ -39,10 +39,9 @@ Mantieni il file **conciso**: matrice sintetica e log a righe brevi. Non incolla
 chat l'intero contenuto dei file di stato.
 
 ## Punti aperti da non trattare come bug
-- **D-11**: `end_date` FAL (12/12/2026) è **assunto**, non pubblicato → da riverificare.
-- **D-12**: festività **locali/patronali** (Bari/Modugno) non modellate (si assume
-  circolazione normale).
-- **R-09**: `platform` nei side-car da OCR best-effort, non verificato.
 - **D-02**: licenza dati → rilevante solo **prima di una pubblicazione**, non ora.
 Già chiusi (non risegnalare come gap): R-03 (coordinate presenti), D-06 (festività
-nazionali modellate nel motore festività).
+nazionali modellate nel motore festività), D-11 (`end_date` FAL: assunzione motivata,
+nessuna scadenza pubblicata da FAL), D-12 (festività locali/patronali: committente
+conferma nessuna modellazione), D-13 (accessibilità FAL verificata), R-09 (binario
+Bari Centrale da OCR: limite noto, testo UI aggiornato).

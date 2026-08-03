@@ -31,6 +31,7 @@ void main() {
     expect(a.category, 'R');
     expect(a.categoryLabel, 'Regionale');
     expect(a.departurePlatform, '8');
+    expect(a.platformVerified, isFalse);
     expect(a.strikeGuaranteed, isTrue);
     expect(a.reservationRequired, isFalse);
     expect(a.note, 'NON CIRCOLA NEI GIORNI FESTIVI');
@@ -43,6 +44,7 @@ void main() {
 {"trains": [{"trip_id": "TI_19826", "category": "R", "category_label": "Regionale", "platform_modugno": "1"}]}
 ''';
     expect(parseAttributes(json)['TI_19826']!.departurePlatform, '1');
+    expect(parseAttributes(json)['TI_19826']!.platformVerified, isTrue);
   });
 
   test('parseAttributes tollera input vuoto o malformato', () {

@@ -26,8 +26,11 @@ Map<String, TripAttributes> parseAttributes(String content) {
     if (tripId == null || tripId.isEmpty) continue;
 
     // Il binario di partenza ha nome diverso a seconda della stazione d'origine.
+    // Da Bari Centrale è OCR non verificato (R-09); da Modugno è dichiarato
+    // con certezza dalla fonte, quindi non serve la stessa cautela in UI.
     final platform = (raw['platform_bari_centrale'] ?? raw['platform_modugno'])
         as String?;
+    final platformVerified = raw['platform_bari_centrale'] == null;
 
     final stops = <IntermediateStop>[];
     final dynamic rawStops = raw['intermediate_stops'];
@@ -48,6 +51,7 @@ Map<String, TripAttributes> parseAttributes(String content) {
       category: (raw['category'] as String?) ?? '',
       categoryLabel: (raw['category_label'] as String?) ?? '',
       departurePlatform: _nullIfEmpty(platform),
+      platformVerified: platformVerified,
       intermediateStops: stops,
       reservationRequired: raw['reservation_required'] == true,
       strikeGuaranteed: raw['strike_guaranteed'] == true,

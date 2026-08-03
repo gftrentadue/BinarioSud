@@ -64,8 +64,19 @@ class _JourneyDetailContent extends StatelessWidget {
               ),
               _Row(label: 'Durata', value: '${journey.durationMinutes} min'),
 
-              if (attr?.departurePlatform != null)
+              if (attr?.departurePlatform != null) ...[
                 _Row(label: 'Binario', value: attr!.departurePlatform!),
+                if (!attr.platformVerified) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Indicativo: da verificare in stazione, può variare '
+                    'per esigenze operative.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ],
 
               if (attr != null && attr.intermediateStops.isNotEmpty) ...[
                 const Divider(height: 32),

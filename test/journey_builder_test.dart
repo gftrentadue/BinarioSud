@@ -77,6 +77,7 @@ void main() {
     expect(j.attributes, isNotNull);
     expect(j.attributes!.categoryLabel, 'Regionale');
     expect(j.attributes!.departurePlatform, '8');
+    expect(j.attributes!.platformVerified, isFalse);
     expect(j.attributes!.intermediateStops, isNotEmpty);
   });
 
