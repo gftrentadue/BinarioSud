@@ -1,0 +1,53 @@
+{
+  // Task per avviare l'app su un device Android FISICO qualsiasi, senza legare
+  // l'avvio a un serial specifico: lo script rileva il primo device reale
+  // collegato (emulator=false, piattaforma android) e ci lancia `flutter run`.
+  //
+  // Uso: menu "Terminal → Run Task…" e scegli la modalità, oppure imposta una
+  // di queste come default build task (Cmd+Shift+B).
+  //
+  // I task girano nel terminale integrato: hot reload con `r`, hot restart con
+  // `R`, uscita con `q` (sono i comandi standard di `flutter run`).
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "📱 Android reale (auto) · debug",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/run-android-device.sh",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "📱 Android reale (auto) · profile",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/run-android-device.sh --profile",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "group": "build"
+    },
+    {
+      "label": "📱 Android reale (auto) · release",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/run-android-device.sh --release",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "group": "build"
+    }
+  ]
+}

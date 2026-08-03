@@ -1,0 +1,83 @@
+{
+  // Configurazioni di avvio per l'estensione Flutter/Dart di VS Code.
+  // L'ordine riflette la priorità richiesta: device Android reale → emulatore
+  // Android → Chrome/web. Seleziona la configurazione dal menu "Run and Debug".
+  //
+  // IMPORTANTE — avvio su device Android reale INDIPENDENTE dal modello:
+  // l'estensione Flutter/Dart NON sa filtrare "qualsiasi Android fisico" da
+  // launch.json (il campo "deviceId" richiede l'ID esatto, un serial legato al
+  // singolo telefono). Per un avvio automatico su qualunque device reale usa il
+  // TASK "📱 Android reale (auto)" in .vscode/tasks.json (Terminal → Run Task,
+  // o Cmd+Shift+B): rileva da solo il primo device fisico collegato.
+  //
+  // Le voci "📱 Android device reale" qui sotto NON hanno un deviceId fisso:
+  // avviano il debugger sul device SELEZIONATO nella status bar di VS Code
+  // (scegline uno con "Flutter: Select Device"). Così non sono legate a un
+  // telefono specifico, ma ti chiedono di selezionare il target una volta.
+  //
+  // Nota: l'id dell'emulatore tipico è "emulator-5554"; verificalo con
+  // `flutter devices` se ne avvii più di uno.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "📱 Android device reale (debug) · device selezionato",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "debug"
+    },
+    {
+      "name": "📱 Android device reale (profile) · device selezionato",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "profile"
+    },
+    {
+      "name": "📱 Android device reale (release) · device selezionato",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "release"
+    },
+    {
+      "name": "🤖 Emulatore Android (debug)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "emulator-5554",
+      "flutterMode": "debug"
+    },
+    {
+      "name": "🤖 Emulatore Android (profile)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "emulator-5554",
+      "flutterMode": "profile"
+    },
+    {
+      "name": "🌐 Chrome / Web (debug)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "flutterMode": "debug"
+    },
+    {
+      "name": "🌐 Chrome / Web (profile)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "flutterMode": "profile"
+    },
+    {
+      "name": "▶️ Device selezionato (debug)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "debug"
+    }
+  ]
+}
