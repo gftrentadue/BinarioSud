@@ -64,13 +64,37 @@ oggi persiste solo l'accessibilità (RF-21). NB: `shared_preferences` è storage
 intacca il requisito offline (RF-06).
 
 ## Prossimi passi
+
+> Piano prioritizzato aggiornato il 03/08/2026 (vedi Log avanzamenti). P1 e P2 non
+> hanno dipendenze tra loro e possono procedere in parallelo; P3 ha una scadenza nota;
+> P4 parte solo quando si decide di avviare la Fase 2.
+
 - [x] **RF-20** Filtro "solo corse con bici" (`FilterChip` in `_FilterBar` + predicato `_matchesNonTimeFilters`). NB: no-op coi dati attuali (`bikes_allowed=1` ovunque).
 - [x] **RF-21** Filtro accessibilità (`FilterChip` "Accessibile", tiene `wheelchair=yes`).
 - [x] **RF-15** Chiuso come **non implementato per scelta UX**: con sole 2 direzioni già selezionabili direttamente, lo swap è ridondante. `toggleDirection` resta nel controller per eventuale riuso.
-- [ ] **RF-19** A licenza nota (D-02) sostituire il testo placeholder di attribuzione in `info_sheet.dart`.
-- [x] **Qualità** Copertura test estesa ai filtri (controller: bici/accessibilità/`activeFilterCount`/`resetFilters`/persistenza) e nuovo `schedule_screen_test.dart` (struttura Opzione A, apertura pannello, badge). **41 test totali.** NB: l'anti-overflow di layout **non** è coperto da widget test (font di test gonfia i testi → falsi overflow); verifica a mano sul device.
-- [x] **Igiene repo** Git inizializzato e progetto versionato (branch `master`, 3 commit). `.gitignore` adeguato a VS Code (versionati `launch.json`/`tasks.json`, ignorati file macchina-specifici); `.claude/settings.local.json` rimosso dal tracking e ignorato. Branch principale `master` (anche `init.defaultBranch` globale = `master`). _Aperto opzionale:_ nessun remote configurato (lega a D-08).
-- [ ] **Fase 2 (fuori Fase 1)** Quando si avvia: RF-07/§1.4, manifest, RF-14, hosting (D-08).
+- [x] **Qualità** Copertura test estesa ai filtri (controller: bici/accessibilità/`activeFilterCount`/`resetFilters`/persistenza) e nuovo `schedule_screen_test.dart` (struttura Opzione A, apertura pannello, badge). **43 test totali** (aggiornato dopo l'estensione side-car FAL del 25/06). NB: l'anti-overflow di layout **non** è coperto da widget test (font di test gonfia i testi → falsi overflow); verifica a mano sul device → vedi P1.
+- [x] **Igiene repo** Git inizializzato e progetto versionato (branch `master`, 3 commit). `.gitignore` adeguato a VS Code (versionati `launch.json`/`tasks.json`, ignorati file macchina-specifici); `.claude/settings.local.json` rimosso dal tracking e ignorato. Branch principale `master` (anche `init.defaultBranch` globale = `master`). _Aperto:_ nessun remote configurato → vedi P1.
+
+### P1 — Chiusura Fase 1 (basso sforzo, nessuna dipendenza)
+- [ ] Verifica manuale anti-overflow su device reale (layout non coperto da widget test).
+- [ ] Configurare un remote Git (GitHub) — prerequisito per CI e per l'integrazione GitHub dei Project claude.ai.
+- [ ] CI minima (GitHub Actions): `flutter analyze` + `flutter test` ad ogni push.
+
+### P2 — Verifiche dati in sospeso (nessuno sviluppo, solo verifica esterna — dettaglio in "Decisioni aperte")
+- [ ] **D-13** accessibilità FAL — priorità più alta del gruppo (rischio asimmetrico).
+- [ ] **D-11** `end_date` FAL assunto.
+- [ ] **R-09** `platform_bari_centrale` da OCR.
+- [ ] **D-12** festività locali/patronali — decisione da prendere col committente.
+
+### P3 — Cambio orario 12/12/2026 (scadenza nota: sia FAL sia TI)
+- [ ] Programmare la raccolta dei nuovi quadri RFI + manifesto FAL (indicativamente da metà novembre 2026).
+- [ ] Rigenerare il feed con `build_gtfs.py` (nuovo `feed_version`, nuove finestre di validità) prima del 12/12/2026, per evitare il banner RF-13 su tutte le corse.
+
+### P4 — Fase 2 (refresh di rete): solo quando si decide di avviarla
+- [ ] **D-08** scelta hosting (Firebase vs GitHub) — sblocca il resto della Fase 2.
+- [ ] **RF-07** + manifest reale (§1.4) — dipende da D-08.
+- [ ] **RF-14** pull-to-refresh manuale — dipende da RF-07.
+- [ ] **D-02** licenza dati, poi testo definitivo RF-19 in `info_sheet.dart` — rilevante solo prima di una pubblicazione pubblica.
 
 ## Decisioni aperte (solo D-xx da chiudere)
 - **D-02** — Licenza d'uso del dato: non bloccante per MVP non pubblicato; da chiudere **prima della pubblicazione** (impatta testo RF-19).
@@ -83,6 +107,7 @@ intacca il requisito offline (RF-06).
 > Già chiuse (non rilevare come gap): R-03 (coordinate presenti), D-06 (festività nazionali nel motore festività).
 
 ## Log avanzamenti
+- **2026-08-03** — Pianificazione: sezione "Prossimi passi" riorganizzata in piano prioritizzato (P1 chiusura Fase 1, P2 verifiche dati, P3 cambio orario 12/12/2026, P4 Fase 2), da analisi esterna. Corretto anche il conteggio test nella voce "Qualità" (41→43, allineato al log del 25/06). Nessuna modifica al codice.
 - **2026-06-25** — Fermate intermedie estese a **FAL** (coerenza con TI, RF-16). Aggiunti i due side-car `assets/attributes/fal_{bari_modugno,modugno_bari}_attributes.json` (fonte: manifesto FAL 27/10/2025) e registrati nel loader `gtfs_repository.dart`. Verifica dati: join `trip_id` **1:1 con le 40 corse FAL del GTFS** (0 orfani, 0 mancanti), estremi orari coincidenti col GTFS, fermate intermedie (Bari Scalo / Bari Policlinico) temporalmente monotone su tutte le 40 corse. Parser e UI già operatore-agnostici, nessuna modifica. Aggiornato `journey_builder_test.dart` (il vecchio test "FAL senza side-car" ora asserisce la presenza degli attributi). **43/43 test verdi**. NB: resa UI da verificare su device prima del commit.
 - **2026-06-24** — Verifica conformità alla spec v1.5 + correzioni RF-21 (accessibilità FAL). (1) Dettaglio corsa: badge FAL da **"Non accessibile"** → **"Accessibilità da verificare"** (icona `help_outline`), per non presentare come confermato un dato assunto non verificato (R-10/A-10/D-13). (2) Filtro "Accessibile" non esclude più **silenziosamente** le corse FAL: nuovo `ScheduleController.falExcludedByAccessibilityCount` + nota `_AccessibilityFilterNotice` in schermata col conteggio. (3) Corretto commento obsoleto coordinate in `gtfs_models.dart` (valorizzate in v2, R-03 chiusa). +2 test controller. `flutter analyze` pulito, **43/43 test verdi**. NB: modifiche UI da verificare su device prima del commit.
 - **2026-06-19** — Ricognizione iniziale stato progetto (no codice applicativo). Confermato feed v2 in bundle (`20260618-6`), parser/UI leggono i campi estesi v2. Core Fase 1 (RF-01→13) implementato; gap residui su RF-20/21 (filtri assenti), RF-15 (UI mancante), RF-19 (testo licenza placeholder). Repo senza git; `build_gtfs.py` non nel progetto. Creato questo file di stato.
