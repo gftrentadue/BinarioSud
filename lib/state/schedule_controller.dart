@@ -36,9 +36,9 @@ class ScheduleController extends ChangeNotifier {
     required GtfsRepository repository,
     DateTime Function()? now,
     SettingsStore? settingsStore,
-  })  : _repository = repository,
-        _now = now ?? DateTime.now,
-        _settingsStore = settingsStore;
+  }) : _repository = repository,
+       _now = now ?? DateTime.now,
+       _settingsStore = settingsStore;
 
   // --- Stato feed ---
   FeedStatus _status = FeedStatus.loading;
@@ -210,8 +210,10 @@ class ScheduleController extends ChangeNotifier {
     switch (_operatorFilter) {
       case OperatorFilter.trenitalia:
         if (j.agencyId != 'TI') return false;
+        break;
       case OperatorFilter.fal:
         if (j.agencyId != 'FAL') return false;
+        break;
       case OperatorFilter.tutti:
         break;
     }

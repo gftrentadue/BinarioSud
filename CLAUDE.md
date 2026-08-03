@@ -15,8 +15,9 @@ teorici, **niente real-time**.
 ## Stato attuale (Fase 1 — bundle-only)
 - Il GTFS è incluso nel **bundle** ed è l'**unica fonte**: nessun refresh da rete.
   RF-07 e la logica di refresh §1.4 sono **rinviati alla Fase 2**.
-- Feed in bundle: **v2, `feed_version 20260618-6`**, completo da fonti ufficiali
-  (99 corse / 198 stop_times), generato da `build_gtfs.py`. Supera il vecchio seed v1.
+- Feed in bundle: **v2, `feed_version 20260618-7`** (patch accessibilità FAL su
+  `20260618-6`), completo da fonti ufficiali (99 corse / 198 stop_times), generato da
+  `build_gtfs.py`. Supera il vecchio seed v1.
 - Contratto dati esteso: `trip_short_name`, `bikes_allowed`, `wheelchair_accessible`,
   coordinate stop valorizzate, 8 `service_id` namespaced per operatore, motore festività
   nazionali precalcolato in `calendar_dates`, più **file side-car non-GTFS** (attributi treno).

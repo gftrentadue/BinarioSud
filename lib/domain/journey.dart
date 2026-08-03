@@ -33,7 +33,8 @@ class Journey {
   final Availability wheelchair;
 
   /// Attributi estesi non-GTFS (categoria, binario, fermata intermedia, …),
-  /// presenti solo per le corse TI; `null` per FAL.
+  /// presenti sia per le corse TI sia per le corse FAL (side-car JSON per
+  /// entrambi gli operatori). `null` solo se il side-car non copre la corsa.
   final TripAttributes? attributes;
 
   const Journey({

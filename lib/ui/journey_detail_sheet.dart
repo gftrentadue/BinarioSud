@@ -1,8 +1,8 @@
 /// Dettaglio corsa — bottom sheet aperto al tap su una [JourneyTile].
 ///
-/// Mostra il riepilogo orario e gli attributi estesi non-GTFS (categoria,
-/// binario, fermata intermedia, prenotazione, garanzia sciopero, nota di
-/// circolazione). Per le corse senza side-car (FAL) mostra il solo riepilogo.
+/// Mostra il riepilogo orario e, quando disponibili, gli attributi estesi
+/// non-GTFS (categoria, binario, fermata intermedia, prenotazione, garanzia
+/// sciopero, nota di circolazione) — presenti sia per TI sia per FAL.
 library;
 
 import 'package:flutter/material.dart';

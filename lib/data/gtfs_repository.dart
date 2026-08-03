@@ -27,7 +27,8 @@ class GtfsFeed {
   final FeedInfo feedInfo;
 
   /// Attributi estesi non-GTFS, indicizzati per `trip_id` (side-car JSON).
-  /// Presenti solo per le corse TI; assenti per FAL.
+  /// Presenti sia per le corse TI sia per le corse FAL (side-car estesi a
+  /// FAL il 25/06/2026, vedi STATO_PROGETTO.md).
   final Map<String, TripAttributes> attributesByTrip;
 
   const GtfsFeed({
