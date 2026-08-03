@@ -76,9 +76,9 @@ intacca il requisito offline (RF-06).
 - [x] **Igiene repo** Git inizializzato e progetto versionato (branch `master`, 3 commit). `.gitignore` adeguato a VS Code (versionati `launch.json`/`tasks.json`, ignorati file macchina-specifici); `.claude/settings.local.json` rimosso dal tracking e ignorato. Branch principale `master` (anche `init.defaultBranch` globale = `master`). _Aperto:_ nessun remote configurato → vedi P1.
 
 ### P1 — Chiusura Fase 1 (basso sforzo, nessuna dipendenza)
-- [ ] Verifica manuale anti-overflow su device reale (layout non coperto da widget test).
-- [ ] Configurare un remote Git (GitHub) — prerequisito per CI e per l'integrazione GitHub dei Project claude.ai.
-- [ ] CI minima (GitHub Actions): `flutter analyze` + `flutter test` ad ogni push.
+- [x] Verifica manuale anti-overflow su device reale (layout non coperto da widget test).
+- [x] Configurare un remote Git (GitHub) — già presente (`origin` → `github.com/gftrentadue/binario_sud.git`); il documento risultava disallineato, ora corretto.
+- [x] CI minima (GitHub Actions): `.github/workflows/ci.yml`, `flutter analyze` + `flutter test` su push/PR verso `master`/`develop`.
 
 ### P2 — Verifiche dati in sospeso (nessuno sviluppo, solo verifica esterna — dettaglio in "Decisioni aperte")
 - [ ] **D-13** accessibilità FAL — priorità più alta del gruppo (rischio asimmetrico).
@@ -107,6 +107,8 @@ intacca il requisito offline (RF-06).
 > Già chiuse (non rilevare come gap): R-03 (coordinate presenti), D-06 (festività nazionali nel motore festività).
 
 ## Log avanzamenti
+- **2026-08-03** — Verifica manuale anti-overflow su device reale completata (nessun overflow di layout riscontrato). Con questo si chiude la Fase 1 di P1.
+- **2026-08-03** — CI minima aggiunta: `.github/workflows/ci.yml` (`flutter analyze` + `flutter test` su push/PR verso `master`/`develop`, `subosito/flutter-action@v2` canale stable). Verificato in locale prima del commit: analyze pulito, **43/43 test verdi**. Corretta anche la voce "remote Git" in P1: il remote `origin` risultava già configurato (disallineamento nel documento, non nel repo).
 - **2026-08-03** — Pianificazione: sezione "Prossimi passi" riorganizzata in piano prioritizzato (P1 chiusura Fase 1, P2 verifiche dati, P3 cambio orario 12/12/2026, P4 Fase 2), da analisi esterna. Corretto anche il conteggio test nella voce "Qualità" (41→43, allineato al log del 25/06). Nessuna modifica al codice.
 - **2026-06-25** — Fermate intermedie estese a **FAL** (coerenza con TI, RF-16). Aggiunti i due side-car `assets/attributes/fal_{bari_modugno,modugno_bari}_attributes.json` (fonte: manifesto FAL 27/10/2025) e registrati nel loader `gtfs_repository.dart`. Verifica dati: join `trip_id` **1:1 con le 40 corse FAL del GTFS** (0 orfani, 0 mancanti), estremi orari coincidenti col GTFS, fermate intermedie (Bari Scalo / Bari Policlinico) temporalmente monotone su tutte le 40 corse. Parser e UI già operatore-agnostici, nessuna modifica. Aggiornato `journey_builder_test.dart` (il vecchio test "FAL senza side-car" ora asserisce la presenza degli attributi). **43/43 test verdi**. NB: resa UI da verificare su device prima del commit.
 - **2026-06-24** — Verifica conformità alla spec v1.5 + correzioni RF-21 (accessibilità FAL). (1) Dettaglio corsa: badge FAL da **"Non accessibile"** → **"Accessibilità da verificare"** (icona `help_outline`), per non presentare come confermato un dato assunto non verificato (R-10/A-10/D-13). (2) Filtro "Accessibile" non esclude più **silenziosamente** le corse FAL: nuovo `ScheduleController.falExcludedByAccessibilityCount` + nota `_AccessibilityFilterNotice` in schermata col conteggio. (3) Corretto commento obsoleto coordinate in `gtfs_models.dart` (valorizzate in v2, R-03 chiusa). +2 test controller. `flutter analyze` pulito, **43/43 test verdi**. NB: modifiche UI da verificare su device prima del commit.
