@@ -240,8 +240,9 @@ class ScheduleController extends ChangeNotifier {
   /// Numero di corse **FAL** escluse dalla vista *solo* a causa del filtro
   /// accessibilità (RF-21/R-10): corse che passerebbero direzione, operatore,
   /// bici e fascia oraria ma hanno `wheelchair != yes`. Serve a segnalare in UI
-  /// l'esclusione, evitando di scartare silenziosamente un dato **assunto**
-  /// (FAL `2` non verificato), col rischio di escludere a torto utenti in
+  /// l'esclusione, evitando di scartare silenziosamente un'accessibilità
+  /// **condizionata** (FAL `2`, verificata D-13: pedana su richiesta, non per
+  /// tutte le carrozzine), col rischio di escludere a torto utenti in
   /// carrozzina. Vale `0` se il filtro non è attivo.
   int get falExcludedByAccessibilityCount {
     if (!_onlyAccessible) return 0;

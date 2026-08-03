@@ -20,7 +20,8 @@ enum Direction {
 /// Disponibilità a **3 stati** dei campi GTFS nativi `bikes_allowed` e
 /// `wheelchair_accessible`. Valori GTFS: `0` = nessuna informazione, `1` = sì,
 /// `2` = no. **Non sono booleani**: "no" e "ignoto" sono distinti (§business spec
-/// v2; es. FAL `wheelchair_accessible=2` = assunto non accessibile, ≠ ignoto).
+/// v2; es. FAL `wheelchair_accessible=2` = accessibilità condizionata,
+/// verificata D-13 — non "non accessibile" confermato, ≠ ignoto).
 enum Availability {
   unknown,
   yes,

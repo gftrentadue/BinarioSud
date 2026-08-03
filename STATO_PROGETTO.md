@@ -44,7 +44,7 @@ asset dell'app ed è l'unica fonte, funzionamento interamente **offline**, nessu
 | RF-15 | Scorciatoia "inverti direzione" | COULD | ⏭️ NON IMPLEMENTATO (scelta UX) | `controller.toggleDirection` resta disponibile ma **nessuna UI**: con sole 2 opzioni già direttamente selezionabili nel segmented, lo swap è ridondante |
 | RF-16 | Fermate intermedie | COULD | ✅ IMPLEMENTATO | `journey_detail_sheet.dart` mostra `attributes.intermediateStops` (side-car) **per TI e FAL** (FAL: Bari Scalo / Bari Policlinico) |
 | RF-20 | Filtro "trasporto bici" | COULD | ✅ IMPLEMENTATO | `FilterChip` "Bici" nel pannello `_FiltersSheet` → `setOnlyBikes`; predicato in `_matchesNonTimeFilters`. NB: coi dati attuali (`bikes_allowed=1` su tutte le corse) il filtro non riduce la lista |
-| RF-21 | Filtro/indicatore accessibilità | COULD | ✅ IMPLEMENTATO | `FilterChip` "Accessibile" nel pannello → `setOnlyAccessible` (tiene `wheelchair=yes`), **preferenza persistente** tra sessioni (`SettingsStore`); indicatore a 3 stati nel dettaglio: FAL=`2` reso **"Accessibilità da verificare"** (assunto non verificato, **non** "non accessibile" — R-10/A-10/D-13). Il filtro "Accessibile" **non esclude silenziosamente** le FAL: nota in schermata col conteggio escluse (`falExcludedByAccessibilityCount` + `_AccessibilityFilterNotice`) |
+| RF-21 | Filtro/indicatore accessibilità | COULD | ✅ IMPLEMENTATO | `FilterChip` "Accessibile" nel pannello → `setOnlyAccessible` (tiene `wheelchair=yes`), **preferenza persistente** tra sessioni (`SettingsStore`); indicatore a 3 stati nel dettaglio: FAL=`2` mostrato come **"Accessibile su richiesta"** + didascalia esplicativa (pedana condizionata, preavviso 24h, verificare compatibilità carrozzina) — dato **verificato**, D-13 chiusa (R-10/A-10). Il filtro "Accessibile" **non esclude silenziosamente** le FAL: nota in schermata col conteggio escluse (`falExcludedByAccessibilityCount` + `_AccessibilityFilterNotice`, testo aggiornato) |
 | RF-22 | Numero treno (`trip_short_name`) | COULD | ✅ IMPLEMENTATO | `journey_tile` ("n. X") e `journey_detail_sheet` ("treno X") |
 
 **Campi estesi v2 nel parser:** `bikes_allowed`/`wheelchair_accessible` modellati come enum **`Availability`**
@@ -81,7 +81,7 @@ intacca il requisito offline (RF-06).
 - [x] CI minima (GitHub Actions): `.github/workflows/ci.yml`, `flutter analyze` + `flutter test` su push/PR verso `master`/`develop`.
 
 ### P2 — Verifiche dati in sospeso (nessuno sviluppo, solo verifica esterna — dettaglio in "Decisioni aperte")
-- [ ] **D-13** accessibilità FAL — priorità più alta del gruppo (rischio asimmetrico).
+- [x] **D-13** accessibilità FAL — **chiusa** (03/08/2026): dato verificato (fermata Modugno "con pedana", condizionata) + decisione di modellazione presa (GTFS invariato, testo UI aggiornato in `journey_detail_sheet.dart`/`schedule_screen.dart`).
 - [ ] **D-11** `end_date` FAL assunto.
 - [ ] **R-09** `platform_bari_centrale` da OCR.
 - [ ] **D-12** festività locali/patronali — decisione da prendere col committente.
@@ -101,12 +101,13 @@ intacca il requisito offline (RF-06).
 - **D-08** — Hosting (Firebase vs GitHub): rinviata alla Fase 2.
 - **D-11** — `end_date` FAL `20261212` **assunto** (nessuna scadenza pubblicata): verifica periodica (R-07/A-08).
 - **D-12** — Festività locali/patronali (San Nicola/Bari, patrono Modugno): oggi non modellate; da rivalutare col committente (R-08/A-09).
-- **D-13** — Accessibilità carrozzina FAL **assunta non accessibile** (`wheelchair_accessible=2`, nessun dato sul sito FAL): da verificare; se confermata accessibile, la sorgente porta il campo a `1` e l'app lo riflette senza modifiche.
+- **D-13** — **CHIUSA (03/08/2026).** Accessibilità carrozzina FAL verificata (fonte: PDF FAL "e le persone con disabilità", aprile 2024): fermata Modugno "con pedana", condizionata (tipologia carrozzina, preavviso 24h). Valore GTFS `wheelchair_accessible=2` mantenuto per scelta di modellazione (nessun valore standard rappresenta un "sì condizionato"); testo UI da rendere specifico sulla condizionalità.
 - **R-09** — `platform_bari_centrale` nei side-car da OCR best-effort: verificare prima di esporlo in UI.
 
-> Già chiuse (non rilevare come gap): R-03 (coordinate presenti), D-06 (festività nazionali nel motore festività).
+> Già chiuse (non rilevare come gap): R-03 (coordinate presenti), D-06 (festività nazionali nel motore festività), D-13 (accessibilità FAL verificata, vedi sopra).
 
 ## Log avanzamenti
+- **2026-08-03** — **D-13 chiusa**: verifica online dell'accessibilità carrozzina FAL tramite fonte ufficiale ([PDF FAL "e le persone con disabilità"](https://ferrovieappulolucane.it/wp-content/uploads/2024/04/fal-persone_disabilita.pdf), aprile 2024) — fermata Modugno "con pedana", condizionata (tipologia carrozzina, preavviso 24h). Decisione di modellazione presa in sessione (ruolo committente): GTFS `wheelchair_accessible=2` **invariato** per FAL (nessun valore standard rappresenta un "sì condizionato"); testo UI **aggiornato** di conseguenza in `journey_detail_sheet.dart` (badge "Accessibile su richiesta" + didascalia esplicativa) e `schedule_screen.dart` (`_AccessibilityFilterNotice`), sostituendo il generico "da verificare/assunto" con la condizionalità reale. Aggiornati anche i commenti in `schedule_controller.dart` e `gtfs_models.dart`. Aggiornata `Specifiche_App_Orari_Modugno-Bari_MVP.md` a v1.6 (§1.2/§1.5/§6.6/RF-21/R-10/A-10/D-13 + changelog v1.6). `flutter analyze` pulito, **43/43 test verdi** (nessun test asseriva il testo letterale, nessuna modifica necessaria alla suite).
 - **2026-08-03** — Verifica manuale anti-overflow su device reale completata (nessun overflow di layout riscontrato). Con questo si chiude la Fase 1 di P1.
 - **2026-08-03** — CI minima aggiunta: `.github/workflows/ci.yml` (`flutter analyze` + `flutter test` su push/PR verso `master`/`develop`, `subosito/flutter-action@v2` canale stable). Verificato in locale prima del commit: analyze pulito, **43/43 test verdi**. Corretta anche la voce "remote Git" in P1: il remote `origin` risultava già configurato (disallineamento nel documento, non nel repo).
 - **2026-08-03** — Pianificazione: sezione "Prossimi passi" riorganizzata in piano prioritizzato (P1 chiusura Fase 1, P2 verifiche dati, P3 cambio orario 12/12/2026, P4 Fase 2), da analisi esterna. Corretto anche il conteggio test nella voce "Qualità" (41→43, allineato al log del 25/06). Nessuna modifica al codice.

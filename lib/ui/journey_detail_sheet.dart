@@ -85,16 +85,17 @@ class _JourneyDetailContent extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    // Accessibilità: 3 stati. Il `no` (FAL) è un'assunzione
-                    // conservativa NON verificata (R-10/A-10/D-13): si comunica
-                    // come "da verificare con l'operatore", mai come "non
-                    // accessibile" confermato. "ignoto" omesso.
+                    // Accessibilità: 3 stati. Il `no` (FAL) è verificato
+                    // (D-13, fonte FAL 2024): pedana disponibile ma
+                    // condizionata a tipologia carrozzina e preavviso, mai
+                    // presentato come "non accessibile" confermato. "ignoto"
+                    // omesso.
                     if (journey.wheelchair == Availability.yes)
                       const _Badge(icon: Icons.accessible, label: 'Accessibile'),
                     if (journey.wheelchair == Availability.no)
                       const _Badge(
                           icon: Icons.help_outline,
-                          label: 'Accessibilità da verificare',
+                          label: 'Accessibile su richiesta',
                           negative: true),
                     if (journey.bikes == Availability.yes)
                       const _Badge(
@@ -112,6 +113,17 @@ class _JourneyDetailContent extends StatelessWidget {
                           icon: Icons.verified, label: 'Garantito in sciopero'),
                   ],
                 ),
+                if (journey.wheelchair == Availability.no) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Assistenza con pedana su richiesta (preavviso di almeno 24h), '
+                    'disponibile solo per alcune tipologie di carrozzina: '
+                    'verificare la compatibilità contattando la stazione.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ],
 
               if (attr?.note != null) ...[

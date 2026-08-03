@@ -375,8 +375,9 @@ class _ExpiredBanner extends StatelessWidget {
 }
 
 /// RF-21 / R-10 — quando il filtro "Accessibile" è attivo e nasconde corse
-/// FAL, lo segnala esplicitamente: l'accessibilità FAL è un dato **assunto**
-/// (non verificato), quindi le corse non vanno escluse silenziosamente.
+/// FAL, lo segnala esplicitamente: l'accessibilità FAL è **condizionata**
+/// (verificata, D-13: pedana su richiesta, non per tutte le carrozzine),
+/// quindi le corse non vanno escluse silenziosamente.
 class _AccessibilityFilterNotice extends StatelessWidget {
   final int count;
   const _AccessibilityFilterNotice({required this.count});
@@ -395,7 +396,7 @@ class _AccessibilityFilterNotice extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              '$count $cors: accessibilità non verificata, da confermare con l’operatore.',
+              '$count $cors: accessibile solo su richiesta, da verificare con la stazione.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: scheme.onSurfaceVariant,
                   ),
