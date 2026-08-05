@@ -114,6 +114,12 @@ intacca il requisito offline (RF-06).
 > Già chiuse (non rilevare come gap): R-03 (coordinate presenti), D-06 (festività nazionali nel motore festività), D-11/D-12/D-13 (vedi sopra), R-09 (binario Bari Centrale da OCR: chiusa come limite noto, testo UI aggiornato).
 
 ## Log avanzamenti
+- **2026-08-05** — **Rimosso il pulsante debug "Controlla aggiornamenti ora"** dal
+  pannello Info (`ui/info_sheet.dart`): ridondante rispetto al pull-to-refresh (RF-14),
+  che chiama lo stesso `controller.forceRefreshCheck()` e mostra lo stesso esito in
+  SnackBar. Rimossi anche `_forceRefresh` e gli import ora inutilizzati
+  (`kDebugMode`, `data/feed_refresh_service.dart`). `ScheduleController.forceRefreshCheck()`
+  resta invariato, ancora usato dal pull-to-refresh.
 - **2026-08-05** — **Consumo dei side-car via rete (manifest schema_version 2).** La
   pipeline sorella `BinarioSudPipeline` ora pubblica, oltre a `gtfs-<feed_version>.zip`,
   anche `attributes-<feed_version>.zip` (i 4 side-car JSON, stesso schema `{meta,
