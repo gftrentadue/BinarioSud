@@ -6,9 +6,12 @@
 ## Obiettivo finale dell'MVP
 App Flutter (target Android) che mostra in un'unica lista gli orari teorici dei treni della
 relazione **Modugno ⇄ Bari**, aggregando i due operatori **Trenitalia** e **FAL**, consumando
-un feed **GTFS statico**. L'MVP è in **Fase 1 "bundle-only"** (D-10): il GTFS è incluso negli
-asset dell'app ed è l'unica fonte, funzionamento interamente **offline**, nessun refresh da rete
-(RF-07 e logica §1.4 rinviati alla Fase 2). Fuori ambito: real-time, biglietti, account, altre tratte, iOS.
+un feed **GTFS statico**. Il GTFS è incluso negli asset dell'app come fallback/primo avvio
+(D-07); dal 05/08/2026 l'app implementa anche **RF-07** (Fase 2): un controllo giornaliero
+del manifest pubblicato dalla pipeline, con download condizionale e sostituzione atomica
+della cache locale, secondo la logica §1.4. Funzionamento sempre **offline-first**: senza
+rete l'app resta pienamente utilizzabile sull'ultimo feed disponibile (bundle o cache).
+Fuori ambito: real-time, biglietti, account, altre tratte, iOS.
 
 ## Feed in bundle attualmente in uso
 - **feed_version:** `20260618-7` (v2, completo da fonti ufficiali; patch accessibilità FAL su `20260618-6`) — supera il seed v1 `20260612-1`.
@@ -33,7 +36,7 @@ asset dell'app ed è l'unica fonte, funzionamento interamente **offline**, nessu
 | RF-04 | Filtro/ordine fascia oraria (default "da adesso") | MUST | ✅ IMPLEMENTATO | `schedule_controller.effectiveFromTime`/`setFromTime`; TimePicker nel pannello `_FiltersSheet` (sezione "A partire dalle") |
 | RF-05 | Validità per giorno (calendar + calendar_dates) | MUST | ✅ IMPLEMENTATO | `domain/service_calendar.dart` (`isServiceActive`, gestione exception 1/2) |
 | RF-06 | Funzionamento offline | MUST | ✅ IMPLEMENTATO | `data/gtfs_repository.dart` (rootBundle); nessuna dip. di rete in `pubspec.yaml` |
-| RF-07 | Refresh giornaliero (logica §1.4) | MUST | ⏸️ NON-PERTINENTE-FASE-1 | rinviato a Fase 2 (D-10) |
+| RF-07 | Refresh giornaliero (logica §1.4) | MUST | ✅ IMPLEMENTATO (Fase 2) | `data/feed_refresh_service.dart` (`FeedRefreshService.checkForUpdate`); hot-swap in `state/schedule_controller.dart` (`_backgroundRefresh`/`forceRefreshCheck`) |
 | RF-08 | Data/versione dati in uso | MUST | ✅ IMPLEMENTATO | `_FreshnessFooter` + `info_sheet.dart`; `controller.feedVersion` |
 | RF-09 | Stati limite | MUST | ✅ IMPLEMENTATO (per Fase 1) | `ui/empty_states.dart` (loading/error/no-journey); casi rete sono Fase 2 |
 | RF-10 | Selezione giorno diverso da oggi | MUST | ✅ IMPLEMENTATO | `_DaySelector` Oggi/Domani/DatePicker; `setSelectedDay` |
@@ -96,8 +99,8 @@ intacca il requisito offline (RF-06).
 - [x] Repo pipeline creato e versionato; CI di pubblicazione pronta: `.github/workflows/publish.yml` (trigger manuale) genera GTFS, crea `dist/gtfs-<versione>.zip` + `dist/manifest.json` (`scripts/package_release.py`, contratto §1.3) e pubblica una GitHub Release (tag = `feed_version`) con i due asset; l'app leggerà sempre `.../releases/latest/download/manifest.json` (URL stabile, alias nativo di GitHub). Pubblicazione atomica (Release creata in bozza, poi resa pubblica solo a upload completato). **Prima pubblicazione reale eseguita e verificata il 04/08/2026**: Release `20260618-7` pubblicata, `.../releases/latest/download/manifest.json` raggiungibile e valido (feed_url, date di validità, size, sha256 tutti corretti).
 - [x] Corretto `feed_publisher_url` in `feed_info.txt` (era placeholder `example.com`) → URL reale del repo pipeline.
 - [ ] Lo **scraping automatico giornaliero** dai portali RFI/FAL (obiettivo del committente) è **rimandato**: `build_gtfs.py` oggi genera da dati trascritti a mano nel codice, non contatta alcuna fonte esterna — task futuro dedicato, fuori da questo step.
-- [ ] **RF-07** + consumo manifest lato app (§1.4) — dipende dalla prima pubblicazione reale (sopra).
-- [ ] **RF-14** pull-to-refresh manuale — dipende da RF-07.
+- [x] **RF-07** + consumo manifest lato app (§1.4) — implementato il 05/08/2026 (vedi Log avanzamenti). _Aperto:_ lo zip pubblicato dalla pipeline contiene solo gli 8 `.txt` GTFS, non i side-car `assets/attributes/*.json` (RF-16/RF-21) — questi restano quindi sempre letti dal bundle, si aggiornano solo con una nuova versione dell'app finché `BinarioSudPipeline` non li pubblica anch'essi (task futuro sul repo pipeline, non bloccante).
+- [ ] **RF-14** pull-to-refresh manuale — dipende da RF-07 (ora chiusa); il controller espone già `forceRefreshCheck()` (usato oggi solo dall'hook di debug), riusabile direttamente per l'UI di RF-14.
 - [ ] **D-02** licenza dati, poi testo definitivo RF-19 in `info_sheet.dart` — rilevante solo prima di una pubblicazione pubblica.
 
 ## Decisioni aperte (solo D-xx da chiudere)
@@ -110,6 +113,47 @@ intacca il requisito offline (RF-06).
 > Già chiuse (non rilevare come gap): R-03 (coordinate presenti), D-06 (festività nazionali nel motore festività), D-11/D-12/D-13 (vedi sopra), R-09 (binario Bari Centrale da OCR: chiusa come limite noto, testo UI aggiornato).
 
 ## Log avanzamenti
+- **2026-08-05** — **RF-07 implementato** (refresh giornaliero da rete, §1.4). Nuove dipendenze:
+  `http`, `archive`, `path_provider`, `crypto`. Nuovi file: `data/feed_manifest.dart` (modello
+  manifest §1.3), `data/feed_refresh_service.dart` (`FeedRefreshService`: controllo "una volta
+  al giorno", confronto `feed_version`, download zip, verifica `feed_sha256`, validazione
+  struttura minima, sostituzione atomica della cache — mai corrompe la cache esistente in caso
+  di errore, CA-7.1/CA-4.2). `data/gtfs_repository.dart` esteso con `cacheDir` opzionale
+  (`withCacheDir`): le tabelle GTFS possono venire dal bundle o dalla cache scaricata, stesso
+  parser; gli attributi estesi (side-car) restano **sempre** dal bundle (vedi nota P4 sotto).
+  `data/settings_store.dart` esteso con `cached_feed_version`/`last_check_date` persistiti.
+  `state/schedule_controller.dart`: al 1° avvio sceglie cache-se-presente/bundle, poi lancia il
+  controllo in background senza bloccare la UI (RNF-03); se trova una versione più recente
+  valida la applica **a caldo** nella sessione corrente (hot-swap, decisione confermata in
+  sessione), non solo al prossimo avvio. Aggiunto `forceRefreshCheck()` (bypassa il vincolo
+  "un controllo al giorno") con un pulsante visibile solo in `kDebugMode` nel pannello Info,
+  per provare la catena scarica→valida→sostituisce senza aspettare una vera nuova pubblicazione
+  (le release reali sono manuali e rare, ~2 volte/anno). **Verificato contro il manifest reale
+  pubblicato** (fetch diretto dell'URL stabile durante la pianificazione): struttura conforme al
+  contratto §1.3. **Scoperta**: ispezionato `scripts/package_release.py` nella pipeline — lo zip
+  pubblicato contiene solo gli 8 `.txt` GTFS, non i side-car; annotato come nota aperta non
+  bloccante in P4. +3 file di test nuovi/estesi (`feed_refresh_service_test.dart`,
+  `gtfs_repository_cache_test.dart`, gruppo RF-07 in `schedule_controller_test.dart`) con
+  `http.testing.MockClient` e cartelle temporanee reali, copertura dei casi CA-3.1/3.2/3.3/3.4,
+  CA-4.2, CA-7.1. **55/55 test verdi**, `flutter analyze` pulito (ultima esecuzione fatta in
+  sessione prima di questa nota — da questo punto in poi i comandi `flutter` li esegue
+  l'utente). Verifica end-to-end su device reale: vedi riga successiva.
+- **2026-08-05** — **RF-07 verificato end-to-end su device reale con rete vera.** Aggiunto il
+  permesso `android.permission.INTERNET` in `android/app/src/main/AndroidManifest.xml`
+  (mancava: non serviva in Fase 1 offline-only; senza, il refresh avrebbe fallito in
+  silenzio in build di release — in debug era già presente via
+  `android/app/src/debug/AndroidManifest.xml`). L'utente ha pubblicato una nuova Release
+  reale (`20260805-1`, bump di `feed_version` in `build_gtfs.py`, stessi dati) su
+  `BinarioSudPipeline` col workflow `publish.yml`; il bundle app resta a `20260618-7`
+  (invariato, vedi sezione sopra). Avviata l'app su device, toccato "Controlla
+  aggiornamenti ora (debug)": SnackBar **"Aggiornato a 20260805-1"** — confermata l'intera
+  catena reale GET manifest→confronto versione→download zip→verifica `feed_sha256`→
+  decomprimi→valida struttura→sostituzione atomica della cache→hot-swap in sessione, contro
+  la vera Release GitHub (non solo contro `MockClient` nei test). Confermati anche i due
+  controlli facoltativi: riga "Versione dati" nel pannello Info aggiornata a `20260805-1`
+  subito dopo l'hot-swap; riavviando l'app riparte dalla cache appena scaricata (non più dal
+  bundle) e un secondo tap sul pulsante debug mostra "Già aggiornato" (nessun ri-download).
+  RF-07 considerato chiuso anche lato verifica manuale, non solo test automatici.
 - **2026-08-04** — **Prima pubblicazione reale verificata**: eseguito il workflow `publish.yml` su `BinarioSudPipeline`. Release `20260618-7` pubblicata con i 2 asset attesi; `.../releases/latest/download/manifest.json` raggiungibile in anonimo e con contenuto valido (feed_url/date validità/size/sha256 coerenti coi dati generati). Meccanismo D-08 confermato funzionante end-to-end. Prossimo passo: RF-07 lato app Flutter.
 - **2026-08-04** — **Avviata Fase 2 (P4)**. **D-08 chiusa**: hosting su GitHub. Creato repo pubblico dedicato `BinarioSudPipeline` (separato dall'app, coerente con la distinzione "due deliverable" già in uso) e versionato `build_gtfs.py` + output `assets/gtfs/*.txt`. Aggiunta CI di pubblicazione (`.github/workflows/publish.yml`, trigger manuale): rigenera il GTFS, lo impacchetta in `dist/gtfs-<feed_version>.zip` con `scripts/package_release.py`, genera `dist/manifest.json` conforme al contratto §1.3 (schema_version, feed_url, feed_published_at, feed_valid_from/to, feed_size_bytes, feed_sha256), e pubblica una GitHub Release (tag=`feed_version`, due asset) in modo atomico (bozza → upload → pubblicazione) così l'app potrà sempre leggere un unico URL stabile (`.../releases/latest/download/manifest.json`). Corretto anche `feed_publisher_url` in `feed_info.txt` (era placeholder). Nota emersa in sessione: l'obiettivo di verifica/aggiornamento **automatico giornaliero dai portali** RFI/FAL non è coperto da `build_gtfs.py` (i dati sono trascritti a mano nel codice, nessuno scraping reale) — rimandato a task dedicato futuro, deciso col committente. Prossimo passo: prima esecuzione reale della pubblicazione, poi implementare il consumo del manifest lato app Flutter (RF-07).
 - **2026-08-03** — **P2 chiuso**: chiusi gli ultimi 3 punti (D-11, R-09, D-12) dopo verifica esterna e decisioni col committente. **D-11**: ricerca web sul sito ufficiale FAL (sezione comunicazioni di servizio e quadri orario) non ha trovato una scadenza pubblicata; confermato che il cambio orario nazionale "Orario 2027" parte il 13/12/2026, coerente con l'assunzione `20261212` già in uso — chiusa con nota motivata, nessuna modifica ai dati. **R-09**: non è stato possibile accedere al PDF sorgente RFI originale né a un quadro live per un controllo puntuale del binario; chiusa come limite noto accettato (il binario da grandi stazioni è comunque soggetto a variazione operativa). Aggiunto in `data/gtfs_models.dart`/`data/attributes_parser.dart` il campo `TripAttributes.platformVerified` (distingue `platform_bari_centrale`, OCR non verificato, da `platform_modugno`, dichiarato con certezza dalla fonte); `ui/journey_detail_sheet.dart` mostra ora una didascalia "Indicativo: da verificare in stazione..." solo quando il binario non è verificato. **D-12**: il committente conferma l'assunzione attuale (nessuna modellazione delle festività locali/patronali). +2 asserzioni test (`attributes_parser_test.dart`, `journey_builder_test.dart`). `flutter analyze` pulito, **43/43 test verdi**.

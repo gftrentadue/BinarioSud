@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 
+import 'data/feed_refresh_service.dart';
 import 'data/gtfs_repository.dart';
 import 'data/settings_store.dart';
 import 'state/schedule_controller.dart';
@@ -23,10 +24,12 @@ class BinarioSudApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final settingsStore = SharedPrefsSettingsStore();
     return ChangeNotifierProvider(
       create: (_) => ScheduleController(
         repository: GtfsRepository(),
-        settingsStore: SharedPrefsSettingsStore(),
+        settingsStore: settingsStore,
+        refreshService: FeedRefreshService(settingsStore: settingsStore),
       )..init(),
       child: MaterialApp(
         title: 'Orari Modugno ⇄ Bari',

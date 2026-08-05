@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- RF-07 (Fase 2): controllo giornaliero del manifest e download del feed
+         aggiornato da rete. Non serviva in Fase 1 (bundle-only, offline). -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="binario_sud"
         android:name="${applicationName}"

@@ -7,8 +7,11 @@
 /// Tutta l'elaborazione è locale e sincrona su un dataset piccolo (RNF-03).
 library;
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
+import '../data/feed_refresh_service.dart';
 import '../data/gtfs_models.dart';
 import '../data/gtfs_repository.dart';
 import '../data/settings_store.dart';
@@ -23,7 +26,7 @@ enum FeedStatus { loading, ready, error }
 enum OperatorFilter { tutti, trenitalia, fal }
 
 class ScheduleController extends ChangeNotifier {
-  final GtfsRepository _repository;
+  GtfsRepository _repository;
 
   /// Sorgente dell'ora corrente (iniettabile per i test).
   final DateTime Function() _now;
@@ -32,13 +35,19 @@ class ScheduleController extends ChangeNotifier {
   /// (utile nei test). In produzione si inietta `SharedPrefsSettingsStore`.
   final SettingsStore? _settingsStore;
 
+  /// Refresh giornaliero da rete (RF-07, opzionale): se `null` il
+  /// comportamento resta quello di Fase 1 (bundle-only, nessuna rete).
+  final FeedRefreshService? _refreshService;
+
   ScheduleController({
     required GtfsRepository repository,
     DateTime Function()? now,
     SettingsStore? settingsStore,
+    FeedRefreshService? refreshService,
   }) : _repository = repository,
        _now = now ?? DateTime.now,
-       _settingsStore = settingsStore;
+       _settingsStore = settingsStore,
+       _refreshService = refreshService;
 
   // --- Stato feed ---
   FeedStatus _status = FeedStatus.loading;
@@ -85,12 +94,66 @@ class ScheduleController extends ChangeNotifier {
       _onlyAccessible = await _settingsStore.loadOnlyAccessible();
     }
     try {
+      // Fase 2 (RF-07): se esiste già una cache scaricata, si parte da lì;
+      // altrimenti (primo avvio, o refresh mai riuscito) dal bundle (D-07).
+      final cacheDir = await _refreshService?.cachedFeedDirectory();
+      if (cacheDir != null) {
+        _repository = _repository.withCacheDir(cacheDir);
+      }
       _feed = await _repository.load();
       _status = FeedStatus.ready;
+      await _refreshService?.ensureBaseline(_feed!.feedInfo.feedVersion);
     } catch (e) {
       _error = e;
       _status = FeedStatus.error;
     }
+    notifyListeners();
+
+    // Controllo giornaliero silenzioso, non blocca la UI già mostrata
+    // (RNF-03). In caso di nuova versione, sostituisce il feed a caldo.
+    if (_status == FeedStatus.ready && _refreshService != null) {
+      unawaited(_backgroundRefresh());
+    }
+  }
+
+  /// Esegue il controllo/aggiornamento giornaliero (§1.4) senza bloccare la
+  /// UI. Qualsiasi esito diverso da "nuova versione scaricata" resta
+  /// silenzioso, per spec.
+  Future<void> _backgroundRefresh() async {
+    final service = _refreshService;
+    if (service == null) return;
+    try {
+      final result = await service.checkForUpdate();
+      if (result.outcome == RefreshOutcome.updated) {
+        await _reloadFromCache(service);
+      }
+    } catch (_) {
+      // Il refresh è opportunistico: un errore qui non deve mai interrompere
+      // l'app né la sessione corrente.
+    }
+  }
+
+  /// Forza un controllo immediato bypassando "un controllo al giorno" (hook
+  /// di debug, riusabile in futuro per RF-14 pull-to-refresh).
+  Future<FeedRefreshResult?> forceRefreshCheck() async {
+    final service = _refreshService;
+    if (service == null) return null;
+    final result = await service.checkForUpdate(force: true);
+    if (result.outcome == RefreshOutcome.updated) {
+      await _reloadFromCache(service);
+    }
+    return result;
+  }
+
+  /// Ricarica il feed dalla cache appena aggiornata e notifica la UI
+  /// (hot-swap in sessione).
+  Future<void> _reloadFromCache(FeedRefreshService service) async {
+    final cacheDir = await service.cachedFeedDirectory();
+    if (cacheDir == null) return;
+    final repo = _repository.withCacheDir(cacheDir);
+    final feed = await repo.load();
+    _repository = repo;
+    _feed = feed;
     notifyListeners();
   }
 

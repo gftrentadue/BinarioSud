@@ -1,9 +1,14 @@
-/// Caricamento del feed GTFS dal bundle dell'app (Fase 1, D-10: bundle-only).
+/// Caricamento del feed GTFS: dal bundle dell'app (Fase 1, D-10: bundle-only)
+/// oppure, se presente, dalla cache scaricata in Fase 2 (RF-07).
 ///
-/// Nessun accesso di rete: gli 8 file `.txt` sono asset Flutter scompattati in
-/// `assets/gtfs/` e letti con `rootBundle`. La transizione futura alla fonte
-/// esterna (Fase 2) riusa lo stesso parser cambiando solo l'origine dei `.txt`.
+/// Stesso parser per entrambe le sorgenti: cambia solo da dove arrivano le
+/// stringhe degli 8 file `.txt`. Gli attributi estesi non-GTFS (side-car,
+/// `assets/attributes/`) sono **sempre** letti dal bundle: la pipeline non li
+/// pubblica ancora nello zip Fase 2 (vedi STATO_PROGETTO.md), quindi
+/// aggiornano solo con una nuova versione dell'app.
 library;
+
+import 'dart:io';
 
 import 'package:flutter/services.dart' show rootBundle, AssetBundle;
 
@@ -44,14 +49,27 @@ class GtfsFeed {
   });
 }
 
-/// Carica e parsa il feed GTFS dal bundle.
+/// Carica e parsa il feed GTFS.
 class GtfsRepository {
   static const _basePath = 'assets/gtfs';
   static const _attributesPath = 'assets/attributes';
 
   final AssetBundle _bundle;
 
-  GtfsRepository({AssetBundle? bundle}) : _bundle = bundle ?? rootBundle;
+  /// Cartella cache scaricata (Fase 2, RF-07). Se presente, le tabelle GTFS
+  /// vengono lette da qui (`<cacheDir>/gtfs/*.txt`) invece che dal bundle; gli
+  /// attributi estesi restano comunque letti dal bundle (vedi doc di libreria).
+  final Directory? _cacheDir;
+
+  GtfsRepository({AssetBundle? bundle, Directory? cacheDir})
+      : _bundle = bundle ?? rootBundle,
+        _cacheDir = cacheDir;
+
+  /// Nuova istanza che riusa lo stesso bundle (per gli attributi estesi,
+  /// sempre letti da lì) ma legge le tabelle GTFS da [cacheDir] (Fase 2,
+  /// RF-07). `cacheDir` nullo ripristina la lettura dal solo bundle.
+  GtfsRepository withCacheDir(Directory? cacheDir) =>
+      GtfsRepository(bundle: _bundle, cacheDir: cacheDir);
 
   Future<GtfsFeed> load() async {
     final files = await Future.wait([
@@ -195,8 +213,13 @@ class GtfsRepository {
     );
   }
 
-  Future<String> _read(String name) =>
-      _bundle.loadString('$_basePath/$name');
+  Future<String> _read(String name) {
+    final cacheDir = _cacheDir;
+    if (cacheDir != null) {
+      return File('${cacheDir.path}/gtfs/$name').readAsString();
+    }
+    return _bundle.loadString('$_basePath/$name');
+  }
 
   /// Legge un side-car JSON; ritorna stringa vuota se il file manca (gli
   /// attributi sono opzionali e non devono mai bloccare il caricamento feed).

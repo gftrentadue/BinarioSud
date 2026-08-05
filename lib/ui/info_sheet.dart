@@ -5,9 +5,11 @@
 /// ancora da definire (D-02), quindi è predisposto come placeholder.
 library;
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../data/feed_refresh_service.dart';
 import '../state/schedule_controller.dart';
 
 void showInfoSheet(BuildContext context) {
@@ -59,10 +61,46 @@ class _InfoSheetContent extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
+            if (kDebugMode) ...[
+              const Divider(height: 32),
+              OutlinedButton(
+                onPressed: () => _forceRefresh(context),
+                child: const Text('Controlla aggiornamenti ora (debug)'),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  // Hook di sviluppo (RF-07): forza un controllo del manifest bypassando il
+  // vincolo "un controllo al giorno", per provare la catena
+  // scarica→valida→sostituisce senza aspettare una vera nuova pubblicazione.
+  // Non compare in build di release (kDebugMode).
+  Future<void> _forceRefresh(BuildContext context) async {
+    final controller = context.read<ScheduleController>();
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await controller.forceRefreshCheck();
+    messenger.showSnackBar(SnackBar(content: Text(_outcomeLabel(result))));
+  }
+
+  String _outcomeLabel(FeedRefreshResult? result) {
+    if (result == null) return 'Refresh non configurato';
+    switch (result.outcome) {
+      case RefreshOutcome.skippedAlreadyCheckedToday:
+        return 'Già controllato oggi';
+      case RefreshOutcome.networkError:
+        return 'Rete non raggiungibile o manifest illeggibile';
+      case RefreshOutcome.unsupportedSchema:
+        return 'Manifest con schema non supportato: aggiornare l\'app';
+      case RefreshOutcome.upToDate:
+        return 'Già aggiornato (nessuna nuova versione)';
+      case RefreshOutcome.updated:
+        return 'Aggiornato a ${result.newFeedVersion}';
+      case RefreshOutcome.downloadFailed:
+        return 'Download o validazione falliti: feed precedente mantenuto';
+    }
   }
 }
 

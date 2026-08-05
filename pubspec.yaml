@@ -37,11 +37,19 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
-  # Stato app (Fase 1: niente rete, solo elaborazione locale offline).
+  # Stato app.
   provider: ^6.1.2
   # Formattazione date/orari con locale italiana (Europe/Rome).
   intl: ^0.20.2
   shared_preferences: ^2.5.5
+  # Fase 2 (RF-07): refresh giornaliero del feed da rete.
+  http: ^1.2.2
+  # Decompressione dello zip GTFS pubblicato dalla pipeline.
+  archive: ^4.0.2
+  # Cartella scrivibile del device per la cache del feed scaricato.
+  path_provider: ^2.1.4
+  # Verifica integrità (feed_sha256) del feed scaricato.
+  crypto: ^3.0.5
 
 dev_dependencies:
   flutter_test:
