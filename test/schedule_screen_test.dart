@@ -86,4 +86,20 @@ void main() {
     expect(find.byType(Badge), findsOneWidget);
     expect(find.text('2'), findsOneWidget);
   });
+
+  testWidgets('RF-14: pull-to-refresh sulla lista forza un controllo',
+      (tester) async {
+    await pumpScreen(tester);
+
+    // Trascina la lista verso il basso per attivare il RefreshIndicator.
+    await tester.fling(find.byType(ListView), const Offset(0, 300), 1000);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    // Il controller di test non ha un refreshService (RF-07 disattivato in
+    // questo setup): l'esito atteso è comunque "non configurato", a conferma
+    // che il gesto ha chiamato `forceRefreshCheck()`.
+    expect(find.text('Refresh non configurato'), findsOneWidget);
+  });
 }

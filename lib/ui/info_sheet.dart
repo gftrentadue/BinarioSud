@@ -82,25 +82,7 @@ class _InfoSheetContent extends StatelessWidget {
     final controller = context.read<ScheduleController>();
     final messenger = ScaffoldMessenger.of(context);
     final result = await controller.forceRefreshCheck();
-    messenger.showSnackBar(SnackBar(content: Text(_outcomeLabel(result))));
-  }
-
-  String _outcomeLabel(FeedRefreshResult? result) {
-    if (result == null) return 'Refresh non configurato';
-    switch (result.outcome) {
-      case RefreshOutcome.skippedAlreadyCheckedToday:
-        return 'Già controllato oggi';
-      case RefreshOutcome.networkError:
-        return 'Rete non raggiungibile o manifest illeggibile';
-      case RefreshOutcome.unsupportedSchema:
-        return 'Manifest con schema non supportato: aggiornare l\'app';
-      case RefreshOutcome.upToDate:
-        return 'Già aggiornato (nessuna nuova versione)';
-      case RefreshOutcome.updated:
-        return 'Aggiornato a ${result.newFeedVersion}';
-      case RefreshOutcome.downloadFailed:
-        return 'Download o validazione falliti: feed precedente mantenuto';
-    }
+    messenger.showSnackBar(SnackBar(content: Text(refreshOutcomeLabel(result))));
   }
 }
 

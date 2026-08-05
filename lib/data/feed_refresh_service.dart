@@ -52,6 +52,26 @@ class FeedRefreshResult {
   const FeedRefreshResult(this.outcome, {this.newFeedVersion});
 }
 
+/// Etichetta utente per l'esito di un controllo/aggiornamento, condivisa tra
+/// l'hook di debug (Info) e il pull-to-refresh manuale (RF-14).
+String refreshOutcomeLabel(FeedRefreshResult? result) {
+  if (result == null) return 'Refresh non configurato';
+  switch (result.outcome) {
+    case RefreshOutcome.skippedAlreadyCheckedToday:
+      return 'Già controllato oggi';
+    case RefreshOutcome.networkError:
+      return 'Rete non raggiungibile o manifest illeggibile';
+    case RefreshOutcome.unsupportedSchema:
+      return 'Manifest con schema non supportato: aggiornare l\'app';
+    case RefreshOutcome.upToDate:
+      return 'Già aggiornato (nessuna nuova versione)';
+    case RefreshOutcome.updated:
+      return 'Aggiornato a ${result.newFeedVersion}';
+    case RefreshOutcome.downloadFailed:
+      return 'Download o validazione falliti: feed precedente mantenuto';
+  }
+}
+
 class FeedRefreshService {
   static const supportedSchemaVersion = 1;
 

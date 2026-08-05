@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../data/feed_refresh_service.dart';
 import '../data/gtfs_models.dart';
 import '../state/schedule_controller.dart';
 import 'empty_states.dart';
@@ -336,15 +337,28 @@ class _JourneyList extends StatelessWidget {
     }
 
     final nextId = c.nextJourneyTripId;
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: journeys.length,
-      itemBuilder: (_, i) {
-        final j = journeys[i];
-        return JourneyTile(journey: j, isNext: j.tripId == nextId);
-      },
+    return RefreshIndicator(
+      onRefresh: () => _pullToRefresh(context, c),
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        itemCount: journeys.length,
+        itemBuilder: (_, i) {
+          final j = journeys[i];
+          return JourneyTile(journey: j, isNext: j.tripId == nextId);
+        },
+      ),
     );
   }
+}
+
+/// RF-14 — pull-to-refresh manuale: forza il controllo del manifest
+/// bypassando il vincolo "un controllo al giorno" (§1.4), riusando la stessa
+/// logica dell'hook di debug in Info. L'eventuale nuova versione viene
+/// applicata a caldo (hot-swap) dal controller.
+Future<void> _pullToRefresh(BuildContext context, ScheduleController c) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final result = await c.forceRefreshCheck();
+  messenger.showSnackBar(SnackBar(content: Text(refreshOutcomeLabel(result))));
 }
 
 /// RF-13 / CA-5.1 — banner non bloccante quando il feed è oltre validità.

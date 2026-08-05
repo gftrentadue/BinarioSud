@@ -44,7 +44,7 @@ Fuori ambito: real-time, biglietti, account, altre tratte, iOS.
 | RF-12 | Filtro operatore | SHOULD | ✅ IMPLEMENTATO | `OperatorFilter` segmented nel pannello `_FiltersSheet` |
 | RF-13 | Indicatore feed oltre `feed_valid_to` | SHOULD | ✅ IMPLEMENTATO | `controller.isFeedExpired` + banner in `schedule_screen` |
 | RF-19 | Attribuzione fonte + licenza | SHOULD→MUST a pubbl. | 🟡 PARZIALE (corretto per MVP) | `info_sheet.dart`: spazio predisposto, testo placeholder (D-02) |
-| RF-14 | Pull-to-refresh manuale | COULD | ⏸️ NON-PERTINENTE-FASE-1 | dipende dal refresh (Fase 2) |
+| RF-14 | Pull-to-refresh manuale | COULD | ✅ IMPLEMENTATO | `ui/schedule_screen.dart` (`RefreshIndicator` su `_JourneyList` → `_pullToRefresh` → `controller.forceRefreshCheck()`, esito in SnackBar) |
 | RF-15 | Scorciatoia "inverti direzione" | COULD | ⏭️ NON IMPLEMENTATO (scelta UX) | `controller.toggleDirection` resta disponibile ma **nessuna UI**: con sole 2 opzioni già direttamente selezionabili nel segmented, lo swap è ridondante |
 | RF-16 | Fermate intermedie | COULD | ✅ IMPLEMENTATO | `journey_detail_sheet.dart` mostra `attributes.intermediateStops` (side-car) **per TI e FAL** (FAL: Bari Scalo / Bari Policlinico) |
 | RF-20 | Filtro "trasporto bici" | COULD | ✅ IMPLEMENTATO | `FilterChip` "Bici" nel pannello `_FiltersSheet` → `setOnlyBikes`; predicato in `_matchesNonTimeFilters`. NB: coi dati attuali (`bikes_allowed=1` su tutte le corse) il filtro non riduce la lista |
@@ -100,7 +100,7 @@ intacca il requisito offline (RF-06).
 - [x] Corretto `feed_publisher_url` in `feed_info.txt` (era placeholder `example.com`) → URL reale del repo pipeline.
 - [ ] Lo **scraping automatico giornaliero** dai portali RFI/FAL (obiettivo del committente) è **rimandato**: `build_gtfs.py` oggi genera da dati trascritti a mano nel codice, non contatta alcuna fonte esterna — task futuro dedicato, fuori da questo step.
 - [x] **RF-07** + consumo manifest lato app (§1.4) — implementato il 05/08/2026 (vedi Log avanzamenti). _Aperto:_ lo zip pubblicato dalla pipeline contiene solo gli 8 `.txt` GTFS, non i side-car `assets/attributes/*.json` (RF-16/RF-21) — questi restano quindi sempre letti dal bundle, si aggiornano solo con una nuova versione dell'app finché `BinarioSudPipeline` non li pubblica anch'essi (task futuro sul repo pipeline, non bloccante).
-- [ ] **RF-14** pull-to-refresh manuale — dipende da RF-07 (ora chiusa); il controller espone già `forceRefreshCheck()` (usato oggi solo dall'hook di debug), riusabile direttamente per l'UI di RF-14.
+- [x] **RF-14** pull-to-refresh manuale — implementato il 05/08/2026 (vedi Log avanzamenti): `RefreshIndicator` sulla lista corse, riusa `controller.forceRefreshCheck()` (già esistente per l'hook di debug).
 - [ ] **D-02** licenza dati, poi testo definitivo RF-19 in `info_sheet.dart` — rilevante solo prima di una pubblicazione pubblica.
 
 ## Decisioni aperte (solo D-xx da chiudere)
@@ -113,6 +113,20 @@ intacca il requisito offline (RF-06).
 > Già chiuse (non rilevare come gap): R-03 (coordinate presenti), D-06 (festività nazionali nel motore festività), D-11/D-12/D-13 (vedi sopra), R-09 (binario Bari Centrale da OCR: chiusa come limite noto, testo UI aggiornato).
 
 ## Log avanzamenti
+- **2026-08-05** — **RF-14 implementato** (pull-to-refresh manuale). Lista corse
+  (`_JourneyList` in `ui/schedule_screen.dart`) avvolta in un `RefreshIndicator`: il gesto
+  chiama `_pullToRefresh` → `controller.forceRefreshCheck()` (bypassa il vincolo "un
+  controllo al giorno" di RF-07, come già l'hook di debug) e mostra l'esito in una SnackBar.
+  Estratta la mappatura `RefreshOutcome → testo` in una funzione condivisa
+  `refreshOutcomeLabel()` in `data/feed_refresh_service.dart`, riusata sia da `info_sheet.dart`
+  (hook debug) sia dal nuovo pull-to-refresh, eliminando la duplicazione. Pull-to-refresh
+  disponibile solo quando la lista non è vuota (stati vuoti non sono scrollabili): scelta
+  minimale, coerente con la priorità COULD del requisito. +1 widget test
+  (`schedule_screen_test.dart`: trascinamento della lista → SnackBar "Refresh non
+  configurato", a conferma del collegamento al gesto senza richiedere un `refreshService`
+  reale nel controller di test). **56/56 test verdi**, `flutter analyze` pulito (verificato
+  dall'utente). **Verificato anche a mano su device reale**: trascinando la lista corse
+  verso il basso il pull-to-refresh funziona correttamente.
 - **2026-08-05** — **RF-07 implementato** (refresh giornaliero da rete, §1.4). Nuove dipendenze:
   `http`, `archive`, `path_provider`, `crypto`. Nuovi file: `data/feed_manifest.dart` (modello
   manifest §1.3), `data/feed_refresh_service.dart` (`FeedRefreshService`: controllo "una volta
