@@ -20,6 +20,12 @@ class FeedManifest {
   final String? minAppVersion;
   final String? notes;
 
+  /// Side-car attributi estesi (schema_version 2), stesso pattern dei campi
+  /// `feed_*`: URL dello zip, dimensione e hash per la verifica integrità.
+  final String? attributesUrl;
+  final int? attributesSizeBytes;
+  final String? attributesSha256;
+
   const FeedManifest({
     required this.schemaVersion,
     required this.feedVersion,
@@ -31,6 +37,9 @@ class FeedManifest {
     this.feedSha256,
     this.minAppVersion,
     this.notes,
+    this.attributesUrl,
+    this.attributesSizeBytes,
+    this.attributesSha256,
   });
 
   factory FeedManifest.fromJson(Map<String, dynamic> json) {
@@ -45,6 +54,9 @@ class FeedManifest {
       feedSha256: json['feed_sha256'] as String?,
       minAppVersion: json['min_app_version'] as String?,
       notes: json['notes'] as String?,
+      attributesUrl: json['attributes_url'] as String?,
+      attributesSizeBytes: json['attributes_size_bytes'] as int?,
+      attributesSha256: json['attributes_sha256'] as String?,
     );
   }
 }

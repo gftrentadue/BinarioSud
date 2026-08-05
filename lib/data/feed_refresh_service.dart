@@ -73,7 +73,7 @@ String refreshOutcomeLabel(FeedRefreshResult? result) {
 }
 
 class FeedRefreshService {
-  static const supportedSchemaVersion = 1;
+  static const supportedSchemaVersion = 2;
 
   final http.Client _client;
   final SettingsStore _settingsStore;
@@ -172,10 +172,12 @@ class FeedRefreshService {
         newFeedVersion: manifest.feedVersion);
   }
 
-  /// Scarica lo zip, verifica l'hash (se presente), lo decomprime in una
-  /// cartella temporanea, valida la struttura minima e sostituisce
-  /// atomicamente la cache. Ritorna `false` senza toccare la cache esistente
-  /// se un passaggio qualsiasi fallisce.
+  /// Scarica lo zip GTFS (e, se pubblicato, lo zip attributi), verifica gli
+  /// hash (se presenti), li decomprime in una cartella temporanea comune,
+  /// valida la struttura minima del GTFS e sostituisce atomicamente la
+  /// cache. Ritorna `false` senza toccare la cache esistente se un passaggio
+  /// qualsiasi fallisce; lo swap copre GTFS e attributi insieme, in un solo
+  /// `rename` finale, così non possono restare disallineati.
   Future<bool> _downloadAndSwap(FeedManifest manifest) async {
     final List<int> bytes;
     try {
@@ -201,6 +203,39 @@ class FeedRefreshService {
       return false;
     }
 
+    // Side-car attributi estesi (schema_version 2): opzionali nel manifest,
+    // ma se annunciati devono scaricare e validare correttamente, altrimenti
+    // l'intero aggiornamento fallisce (non si sostituisce solo il GTFS
+    // lasciando gli attributi disallineati).
+    Archive? attributesArchive;
+    final attributesUrl = manifest.attributesUrl;
+    if (attributesUrl != null && attributesUrl.isNotEmpty) {
+      final List<int> attributesBytes;
+      try {
+        final response = await _client
+            .get(Uri.parse(attributesUrl))
+            .timeout(const Duration(seconds: 30));
+        if (response.statusCode != 200) return false;
+        attributesBytes = response.bodyBytes;
+      } catch (_) {
+        return false;
+      }
+
+      final expectedAttributesSha = manifest.attributesSha256;
+      if (expectedAttributesSha != null && expectedAttributesSha.isNotEmpty) {
+        final actual = sha256.convert(attributesBytes).toString();
+        if (actual.toLowerCase() != expectedAttributesSha.toLowerCase()) {
+          return false;
+        }
+      }
+
+      try {
+        attributesArchive = ZipDecoder().decodeBytes(attributesBytes);
+      } catch (_) {
+        return false;
+      }
+    }
+
     final tmp = await _tmpDir;
     try {
       if (tmp.existsSync()) {
@@ -221,6 +256,16 @@ class FeedRefreshService {
       final rows = parseCsv(await feedInfoFile.readAsString());
       final parsedVersion = rows.isNotEmpty ? rows.first['feed_version'] : null;
       if (parsedVersion != manifest.feedVersion) return false;
+
+      if (attributesArchive != null) {
+        final tmpAttributes = Directory('${tmp.path}/attributes');
+        await tmpAttributes.create(recursive: true);
+        for (final file in attributesArchive) {
+          if (!file.isFile || !file.name.endsWith('.json')) continue;
+          final out = File('${tmpAttributes.path}/${file.name}');
+          await out.writeAsBytes(file.content as List<int>);
+        }
+      }
 
       final cache = await _cacheDir;
       if (cache.existsSync()) {

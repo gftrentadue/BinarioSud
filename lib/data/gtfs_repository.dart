@@ -2,10 +2,12 @@
 /// oppure, se presente, dalla cache scaricata in Fase 2 (RF-07).
 ///
 /// Stesso parser per entrambe le sorgenti: cambia solo da dove arrivano le
-/// stringhe degli 8 file `.txt`. Gli attributi estesi non-GTFS (side-car,
-/// `assets/attributes/`) sono **sempre** letti dal bundle: la pipeline non li
-/// pubblica ancora nello zip Fase 2 (vedi STATO_PROGETTO.md), quindi
-/// aggiornano solo con una nuova versione dell'app.
+/// stringhe degli 8 file `.txt`. Gli attributi estesi non-GTFS (side-car)
+/// seguono lo stesso criterio di precedenza, file per file: se la cache
+/// scaricata contiene il side-car (schema_version 2, `attributes/*.json`) si
+/// legge da lì, altrimenti si ricade sul bundle (`assets/attributes/`) — così
+/// una cache più vecchia (o un manifest schema_version 1) senza attributi
+/// pubblicati continua a funzionare senza buchi.
 library;
 
 import 'dart:io';
@@ -58,15 +60,16 @@ class GtfsRepository {
 
   /// Cartella cache scaricata (Fase 2, RF-07). Se presente, le tabelle GTFS
   /// vengono lette da qui (`<cacheDir>/gtfs/*.txt`) invece che dal bundle; gli
-  /// attributi estesi restano comunque letti dal bundle (vedi doc di libreria).
+  /// attributi estesi seguono lo stesso criterio, file per file (vedi doc di
+  /// libreria): `<cacheDir>/attributes/*.json` se presente, altrimenti bundle.
   final Directory? _cacheDir;
 
   GtfsRepository({AssetBundle? bundle, Directory? cacheDir})
       : _bundle = bundle ?? rootBundle,
         _cacheDir = cacheDir;
 
-  /// Nuova istanza che riusa lo stesso bundle (per gli attributi estesi,
-  /// sempre letti da lì) ma legge le tabelle GTFS da [cacheDir] (Fase 2,
+  /// Nuova istanza che riusa lo stesso bundle (fallback) ma legge le tabelle
+  /// GTFS e gli attributi estesi da [cacheDir] quando presenti (Fase 2,
   /// RF-07). `cacheDir` nullo ripristina la lettura dal solo bundle.
   GtfsRepository withCacheDir(Directory? cacheDir) =>
       GtfsRepository(bundle: _bundle, cacheDir: cacheDir);
@@ -221,9 +224,22 @@ class GtfsRepository {
     return _bundle.loadString('$_basePath/$name');
   }
 
-  /// Legge un side-car JSON; ritorna stringa vuota se il file manca (gli
-  /// attributi sono opzionali e non devono mai bloccare il caricamento feed).
+  /// Legge un side-car JSON: preferisce la cache scaricata se contiene questo
+  /// file, altrimenti ricade sul bundle; ritorna stringa vuota se assente in
+  /// entrambi (gli attributi sono opzionali e non devono mai bloccare il
+  /// caricamento feed).
   Future<String> _readAttributes(String name) async {
+    final cacheDir = _cacheDir;
+    if (cacheDir != null) {
+      final cached = File('${cacheDir.path}/attributes/$name');
+      if (cached.existsSync()) {
+        try {
+          return await cached.readAsString();
+        } catch (_) {
+          // Ricade sul bundle sotto.
+        }
+      }
+    }
     try {
       return await _bundle.loadString('$_attributesPath/$name');
     } catch (_) {

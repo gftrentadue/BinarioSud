@@ -20,6 +20,11 @@ teorici, **niente real-time**.
   tabella GTFS può quindi venire dal bundle o dalla cache scaricata, stesso parser
   (`GtfsRepository.withCacheDir`). Funzionamento sempre **offline-first**: senza rete
   l'app resta pienamente utilizzabile sull'ultimo feed disponibile.
+- Dal 05/08/2026 (stesso giorno) il manifest è salito a **schema_version 2**: la pipeline
+  pubblica anche `attributes-<feed_version>.zip` (i side-car non-GTFS), e l'app lo scarica,
+  verifica e usa con lo stesso criterio cache→bundle già in uso per il GTFS
+  (`FeedRefreshService._downloadAndSwap`, `GtfsRepository._readAttributes`). Manifest
+  `schema_version 1` non è più supportato (`unsupportedSchema`).
 - Feed in bundle: **v2, `feed_version 20260618-7`** (patch accessibilità FAL su
   `20260618-6`), completo da fonti ufficiali (99 corse / 198 stop_times), generato da
   `build_gtfs.py`. Supera il vecchio seed v1.
@@ -31,12 +36,13 @@ teorici, **niente real-time**.
 1. **App Flutter** (primario) — consuma il GTFS dal bundle (fallback/primo avvio) o
    dalla cache scaricata via RF-07.
 2. **Pipeline dati** (`build_gtfs.py`, repo separato `BinarioSudPipeline`) — normalizza le
-   fonti ufficiali in GTFS e pubblica `gtfs-<feed_version>.zip` + `manifest.json` su GitHub
-   Release (D-08).
-Procedono separati; il punto di contatto è il Contratto Dati (§1 della specifica). Nota: lo
-zip pubblicato dalla pipeline contiene solo gli 8 `.txt` GTFS, **non** i side-car
-`assets/attributes/*.json` — questi restano sempre letti dal bundle dell'app (aggiornano solo
-con una nuova versione dell'app, non col refresh RF-07); vedi "Punti aperti" sotto.
+   fonti ufficiali in GTFS e pubblica `gtfs-<feed_version>.zip` + `attributes-<feed_version>.zip`
+   + `manifest.json` (schema_version 2) su GitHub Release (D-08).
+Procedono separati; il punto di contatto è il Contratto Dati (§1 della specifica). Da
+05/08/2026 anche i side-car (`assets/attributes/*.json`) sono pubblicati dalla pipeline e
+seguono lo stesso criterio di precedenza del GTFS: cache scaricata se presente, altrimenti
+bundle, file per file — quindi con RF-07 possono aggiornarsi anche senza una nuova versione
+dell'app.
 
 ## Fuori ambito MVP
 Real-time, acquisto biglietti, account, pagamenti, notifiche, altre tratte, iOS.
@@ -51,12 +57,10 @@ chat l'intero contenuto dei file di stato.
 
 ## Punti aperti da non trattare come bug
 - **D-02**: licenza dati → rilevante solo **prima di una pubblicazione**, non ora.
-- **Side-car non pubblicati dalla pipeline**: lo zip Fase 2 non include gli attributi
-  estesi (categoria, binario, fermate intermedie, RF-16/RF-21) → restano sempre letti dal
-  bundle. Limite noto del deliverable pipeline, non un bug dell'app; eventuale
-  allineamento è un task futuro separato su `BinarioSudPipeline`.
 Già chiusi (non risegnalare come gap): R-03 (coordinate presenti), D-06 (festività
 nazionali modellate nel motore festività), D-11 (`end_date` FAL: assunzione motivata,
 nessuna scadenza pubblicata da FAL), D-12 (festività locali/patronali: committente
 conferma nessuna modellazione), D-13 (accessibilità FAL verificata), R-09 (binario
-Bari Centrale da OCR: limite noto, testo UI aggiornato).
+Bari Centrale da OCR: limite noto, testo UI aggiornato), **side-car non pubblicati dalla
+pipeline** (chiuso 05/08/2026: la pipeline ora pubblica anche `attributes-<feed_version>.zip`,
+consumato dall'app con lo stesso criterio cache→bundle del GTFS).

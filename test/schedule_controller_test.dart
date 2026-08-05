@@ -270,7 +270,7 @@ void main() {
           if (req.url == zipUrl) return http.Response.bytes(zipBytes, 200);
           return http.Response(
             jsonEncode({
-              'schema_version': 1,
+              'schema_version': 2,
               'feed_version': '20260701-1',
               'feed_url': zipUrl.toString(),
               'feed_published_at': '2026-07-01T00:00:00+02:00',

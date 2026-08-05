@@ -99,7 +99,8 @@ intacca il requisito offline (RF-06).
 - [x] Repo pipeline creato e versionato; CI di pubblicazione pronta: `.github/workflows/publish.yml` (trigger manuale) genera GTFS, crea `dist/gtfs-<versione>.zip` + `dist/manifest.json` (`scripts/package_release.py`, contratto §1.3) e pubblica una GitHub Release (tag = `feed_version`) con i due asset; l'app leggerà sempre `.../releases/latest/download/manifest.json` (URL stabile, alias nativo di GitHub). Pubblicazione atomica (Release creata in bozza, poi resa pubblica solo a upload completato). **Prima pubblicazione reale eseguita e verificata il 04/08/2026**: Release `20260618-7` pubblicata, `.../releases/latest/download/manifest.json` raggiungibile e valido (feed_url, date di validità, size, sha256 tutti corretti).
 - [x] Corretto `feed_publisher_url` in `feed_info.txt` (era placeholder `example.com`) → URL reale del repo pipeline.
 - [ ] Lo **scraping automatico giornaliero** dai portali RFI/FAL (obiettivo del committente) è **rimandato**: `build_gtfs.py` oggi genera da dati trascritti a mano nel codice, non contatta alcuna fonte esterna — task futuro dedicato, fuori da questo step.
-- [x] **RF-07** + consumo manifest lato app (§1.4) — implementato il 05/08/2026 (vedi Log avanzamenti). _Aperto:_ lo zip pubblicato dalla pipeline contiene solo gli 8 `.txt` GTFS, non i side-car `assets/attributes/*.json` (RF-16/RF-21) — questi restano quindi sempre letti dal bundle, si aggiornano solo con una nuova versione dell'app finché `BinarioSudPipeline` non li pubblica anch'essi (task futuro sul repo pipeline, non bloccante).
+- [x] **RF-07** + consumo manifest lato app (§1.4) — implementato il 05/08/2026 (vedi Log avanzamenti).
+- [x] **Manifest schema_version 2 + side-car via rete** — implementato il 05/08/2026 (vedi Log avanzamenti): la pipeline ora pubblica anche `attributes-<feed_version>.zip`; l'app lo scarica, verifica e usa con lo stesso criterio di precedenza cache→bundle già in uso per il GTFS. Chiude il punto aperto precedente (side-car non più bloccati sul bundle).
 - [x] **RF-14** pull-to-refresh manuale — implementato il 05/08/2026 (vedi Log avanzamenti): `RefreshIndicator` sulla lista corse, riusa `controller.forceRefreshCheck()` (già esistente per l'hook di debug).
 - [ ] **D-02** licenza dati, poi testo definitivo RF-19 in `info_sheet.dart` — rilevante solo prima di una pubblicazione pubblica.
 
@@ -113,6 +114,30 @@ intacca il requisito offline (RF-06).
 > Già chiuse (non rilevare come gap): R-03 (coordinate presenti), D-06 (festività nazionali nel motore festività), D-11/D-12/D-13 (vedi sopra), R-09 (binario Bari Centrale da OCR: chiusa come limite noto, testo UI aggiornato).
 
 ## Log avanzamenti
+- **2026-08-05** — **Consumo dei side-car via rete (manifest schema_version 2).** La
+  pipeline sorella `BinarioSudPipeline` ora pubblica, oltre a `gtfs-<feed_version>.zip`,
+  anche `attributes-<feed_version>.zip` (i 4 side-car JSON, stesso schema `{meta,
+  trains[]}` già gestito da `attributes_parser.dart`, invariato) referenziato nel manifest
+  con 3 nuovi campi (`attributes_url`/`attributes_size_bytes`/`attributes_sha256`),
+  `schema_version` salito a 2. Aggiornamenti lato app: `data/feed_manifest.dart` legge i 3
+  nuovi campi (nullable, stesso pattern dei `feed_*`); `FeedRefreshService
+  .supportedSchemaVersion` 1→2 (i manifest schema 1 ora sono `unsupportedSchema`);
+  `_downloadAndSwap` scarica anche lo zip attributi quando `attributes_url` è presente nel
+  manifest, ne verifica lo sha256 ed estrae i `.json` in `<cache>/attributes/`, nella
+  **stessa** cartella temporanea del GTFS — un solo `rename` finale rende lo swap atomico
+  per entrambi insieme (un hash attributi errato fa fallire l'intero aggiornamento, non
+  lascia GTFS nuovo con attributi vecchi/mancanti). `data/gtfs_repository.dart`:
+  `_readAttributes` ora preferisce, file per file, `<cacheDir>/attributes/*.json` se
+  presente, altrimenti ricade sul bundle — stesso criterio già usato per le tabelle GTFS,
+  così una cache scaricata prima di questo cambio (senza cartella `attributes/`) continua a
+  funzionare senza buchi. Non toccato `attributes_parser.dart` (formato invariato). +1 file
+  di test nuovo (`feed_manifest_test.dart`), test estesi in `feed_refresh_service_test.dart`
+  (schema 1 ora rifiutato, download/verifica/estrazione attributi, hash attributi errato →
+  `downloadFailed` con cache precedente intatta) e `gtfs_repository_cache_test.dart`
+  (side-car preferito dalla cache quando presente, fallback al bundle file per file quando
+  assente). Chiude la nota "Aperto" residua di RF-07/P4 (side-car non pubblicati dalla
+  pipeline) — non ancora rilanciati `flutter analyze`/`flutter test` in sessione, da fare
+  prima del commit.
 - **2026-08-05** — **RF-14 implementato** (pull-to-refresh manuale). Lista corse
   (`_JourneyList` in `ui/schedule_screen.dart`) avvolta in un `RefreshIndicator`: il gesto
   chiama `_pullToRefresh` → `controller.forceRefreshCheck()` (bypassa il vincolo "un

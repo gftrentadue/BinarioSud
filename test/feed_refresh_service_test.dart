@@ -36,6 +36,7 @@ class _FakeSettingsStore implements SettingsStore {
 
 final _manifestUrl = Uri.parse('https://example.test/manifest.json');
 final _zipUrl = Uri.parse('https://example.test/gtfs.zip');
+final _attributesZipUrl = Uri.parse('https://example.test/attributes.zip');
 
 List<int> _buildZip(String feedVersion) {
   final content =
@@ -47,11 +48,22 @@ List<int> _buildZip(String feedVersion) {
   return ZipEncoder().encode(archive);
 }
 
+List<int> _buildAttributesZip(Map<String, String> filesByName) {
+  final archive = Archive();
+  for (final entry in filesByName.entries) {
+    final bytes = utf8.encode(entry.value);
+    archive.addFile(ArchiveFile(entry.key, bytes.length, bytes));
+  }
+  return ZipEncoder().encode(archive);
+}
+
 String _manifestJson({
   required String feedVersion,
-  int schemaVersion = 1,
+  int schemaVersion = 2,
   String? feedUrl,
   String? sha256Hex,
+  String? attributesUrl,
+  String? attributesSha256Hex,
 }) =>
     jsonEncode({
       'schema_version': schemaVersion,
@@ -59,6 +71,8 @@ String _manifestJson({
       'feed_url': feedUrl ?? _zipUrl.toString(),
       'feed_published_at': '2026-07-01T00:00:00+02:00',
       'feed_sha256': ?sha256Hex,
+      'attributes_url': ?attributesUrl,
+      'attributes_sha256': ?attributesSha256Hex,
     });
 
 void main() {
@@ -114,6 +128,17 @@ void main() {
     expect(settingsStore.lastCheckDate, clock);
   });
 
+  test('schema_version 1 (pre-attributi): ora unsupportedSchema', () async {
+    final service = makeService((req) async {
+      return http.Response(
+        _manifestJson(feedVersion: '20260701-1', schemaVersion: 1),
+        200,
+      );
+    });
+    final result = await service.checkForUpdate();
+    expect(result.outcome, RefreshOutcome.unsupportedSchema);
+  });
+
   test('stessa feed_version: upToDate, nessun download (CA-3.2)', () async {
     settingsStore.cachedFeedVersion = '20260618-7';
     final service = makeService((req) async {
@@ -156,6 +181,103 @@ void main() {
     expect(cacheDir, isNotNull);
     final content = await File('${cacheDir!.path}/gtfs/feed_info.txt').readAsString();
     expect(content, contains('20260701-1'));
+  });
+
+  test('manifest senza attributes_url: aggiorna solo il GTFS, nessuna cartella attributes',
+      () async {
+    settingsStore.cachedFeedVersion = '20260618-7';
+    final zipBytes = _buildZip('20260701-1');
+    final sha = sha256.convert(zipBytes).toString();
+
+    final service = makeService((req) async {
+      if (req.url == _zipUrl) {
+        return http.Response.bytes(zipBytes, 200);
+      }
+      return http.Response(
+        _manifestJson(feedVersion: '20260701-1', sha256Hex: sha),
+        200,
+      );
+    });
+
+    final result = await service.checkForUpdate();
+    expect(result.outcome, RefreshOutcome.updated);
+
+    final cacheDir = await service.cachedFeedDirectory();
+    expect(Directory('${cacheDir!.path}/attributes').existsSync(), isFalse);
+  });
+
+  test('attributes_url presente: scarica, verifica hash ed estrae i side-car nella cache',
+      () async {
+    settingsStore.cachedFeedVersion = '20260618-7';
+    final zipBytes = _buildZip('20260701-1');
+    final sha = sha256.convert(zipBytes).toString();
+    final attributesBytes = _buildAttributesZip({
+      'ti_bari_modugno_attributes.json': '{"meta":{},"trains":[]}',
+      'fal_modugno_bari_attributes.json': '{"meta":{},"trains":[]}',
+    });
+    final attributesSha = sha256.convert(attributesBytes).toString();
+
+    final service = makeService((req) async {
+      if (req.url == _zipUrl) return http.Response.bytes(zipBytes, 200);
+      if (req.url == _attributesZipUrl) {
+        return http.Response.bytes(attributesBytes, 200);
+      }
+      return http.Response(
+        _manifestJson(
+          feedVersion: '20260701-1',
+          sha256Hex: sha,
+          attributesUrl: _attributesZipUrl.toString(),
+          attributesSha256Hex: attributesSha,
+        ),
+        200,
+      );
+    });
+
+    final result = await service.checkForUpdate();
+    expect(result.outcome, RefreshOutcome.updated);
+
+    final cacheDir = await service.cachedFeedDirectory();
+    final tiFile =
+        File('${cacheDir!.path}/attributes/ti_bari_modugno_attributes.json');
+    final falFile =
+        File('${cacheDir.path}/attributes/fal_modugno_bari_attributes.json');
+    expect(tiFile.existsSync(), isTrue);
+    expect(falFile.existsSync(), isTrue);
+    expect(await tiFile.readAsString(), contains('trains'));
+  });
+
+  test('hash attributi non corrispondente: downloadFailed, cache GTFS precedente intatta',
+      () async {
+    settingsStore.cachedFeedVersion = '20260618-7';
+    final zipBytes = _buildZip('20260701-1');
+    final sha = sha256.convert(zipBytes).toString();
+    final attributesBytes = _buildAttributesZip({
+      'ti_bari_modugno_attributes.json': '{"meta":{},"trains":[]}',
+    });
+
+    final service = makeService((req) async {
+      if (req.url == _zipUrl) return http.Response.bytes(zipBytes, 200);
+      if (req.url == _attributesZipUrl) {
+        return http.Response.bytes(attributesBytes, 200);
+      }
+      return http.Response(
+        _manifestJson(
+          feedVersion: '20260701-1',
+          sha256Hex: sha,
+          attributesUrl: _attributesZipUrl.toString(),
+          attributesSha256Hex: 'deadbeef' * 8,
+        ),
+        200,
+      );
+    });
+
+    final result = await service.checkForUpdate();
+
+    expect(result.outcome, RefreshOutcome.downloadFailed);
+    expect(settingsStore.cachedFeedVersion, '20260618-7');
+    // Lo swap è atomico: un hash attributi errato non deve lasciare un GTFS
+    // nuovo con attributi mancanti/vecchi in cache.
+    expect(await service.cachedFeedDirectory(), isNull);
   });
 
   test('hash non corrispondente: downloadFailed, cache precedente intatta (CA-7.1)',
