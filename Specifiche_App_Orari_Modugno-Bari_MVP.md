@@ -1,9 +1,9 @@
 # Specifiche Funzionali e di Interfaccia — App Orari Treni Modugno ⇄ Bari (MVP)
 
-**Versione documento:** 1.6
-**Data:** 03/08/2026
+**Versione documento:** 1.7
+**Data:** 06/08/2026
 **Autore:** Business Analyst
-**Stato:** Rilascio feed **v2 (`20260618-7`)** completo da fonti ufficiali, in bundle (Fase 1, D-10). Contratto dati esteso (campi bici/accessibilità, coordinate, 8 service_id, motore festività, side-car). Allineata la versione feed a `20260618-7` (autorevole) e l'accessibilità FAL a `wheelchair_accessible=2`, valore GTFS mantenuto per scelta di modellazione dopo verifica (fermata Modugno con pedana condizionata — D-13 chiusa). Decisioni chiuse: D-03, D-04, D-05, D-07, D-09, D-13; D-06 sostanzialmente chiusa. Rinviata: D-08. In attesa di: D-02 (a GTFS ufficiale definito), D-11, D-12. Vedi changelog in §9.3.
+**Stato:** **Fase 2 (refresh da rete) attiva dal 05/08/2026** (D-10): RF-07 implementato e verificato su device reale, manifest `schema_version 2` con side-car via rete, RF-14 pull-to-refresh. Feed in bundle **v2 (`20260618-7`)** completo da fonti ufficiali (fallback/primo avvio, D-07). Contratto dati esteso (campi bici/accessibilità, coordinate, 8 service_id, motore festività, side-car). Accessibilità FAL a `wheelchair_accessible=2`, valore GTFS mantenuto per scelta di modellazione dopo verifica (fermata Modugno con pedana condizionata — D-13 chiusa). Decisioni chiuse: D-03, D-04, D-05, D-07, D-08, D-09, D-11, D-12, D-13; D-06 sostanzialmente chiusa. In attesa di: D-02 (a GTFS ufficiale definito). Vedi changelog in §9.3.
 **Lingua sorgente dati:** italiano · **Fuso orario di riferimento:** Europe/Rome
 
 ---
@@ -130,9 +130,9 @@ Il feed è un archivio `gtfs.zip` contenente i seguenti file. Sono elencati **so
 | `feed_version` | ● | **Stringa di versione** del feed; deve combaciare con `feed_version` nel manifest (Fase 2). Formato `YYYYMMDD-N` (v1 `20260612-1`; rilascio v2 `20260618-7`). |
 | `feed_start_date`, `feed_end_date` | ○ | Inviluppo di validità del feed. Le finestre **per-operatore sono indipendenti** e portate dalle `start_date`/`end_date` dei rispettivi `service_id` in `calendar.txt` (FAL `20251027`→`20261212`; TI `20260614`→`20261212`). |
 
-### 1.3 Struttura del manifest di versione *(Fase 2 — non usato nell'avvio bundle-only, vedi D-10)*
+### 1.3 Struttura del manifest di versione *(Fase 2 — attiva dal 05/08/2026, vedi D-10)*
 
-File JSON pubblicato a un **URL stabile** (es. `…/manifest.json`), separato dal feed. È l'unico file letto dall'app a ogni controllo giornaliero, **a partire dalla Fase 2** (refresh da rete). In Fase 1 (bundle-only) il manifest non è necessario; resta comunque definito qui perché il contratto è già congelato per la Fase 2. Un `manifest.json` seed è già stato prodotto come artefatto (vedi §6.2/§6.5).
+File JSON pubblicato a un **URL stabile** (`.../releases/latest/download/manifest.json` su GitHub, D-08 chiusa), separato dal feed. È l'unico file letto dall'app a ogni controllo giornaliero. Un `manifest.json` seed era stato prodotto come artefatto iniziale (vedi §6.2/§6.5); in produzione l'app legge il manifest reale pubblicato dalla pipeline.
 
 ```json
 {
@@ -163,9 +163,9 @@ File JSON pubblicato a un **URL stabile** (es. `…/manifest.json`), separato da
 
 ### 1.4 Logica di aggiornamento dell'app (offline-first, a fasi)
 
-> **Fasi di rilascio (D-10).** L'MVP parte in modalità **bundle-only** (Fase 1): il GTFS è incluso nel bundle dell'app ed è l'**unica fonte**; nessun recupero da rete, manifest non necessario. Il refresh da rete è una **Fase 2** (incremento successivo), che riusa lo stesso contratto e lo stesso parser.
-> - **Fase 1 — bundle-only (attiva ora):** l'app legge il GTFS dagli asset del bundle; la versione dati è letta da `feed_info.feed_version` (soddisfa **RF-08**); funzionamento interamente offline (soddisfa **RF-06**). **RF-07 e i passi 1–3 sotto non sono attivi in questa fase.**
-> - **Fase 2 — refresh da rete (futura):** si attiva la logica seguente; il bundle resta come feed di **primo avvio/fallback**.
+> **Fasi di rilascio (D-10).** L'MVP è partito in modalità **bundle-only** (Fase 1: il GTFS incluso nel bundle come unica fonte, nessun recupero da rete). Dal **05/08/2026** è attiva la **Fase 2** (refresh da rete), che riusa lo stesso contratto e lo stesso parser.
+> - **Fase 1 — bundle-only (avvio storico):** l'app leggeva il GTFS solo dagli asset del bundle; versione dati da `feed_info.feed_version` (RF-08); funzionamento interamente offline (RF-06).
+> - **Fase 2 — refresh da rete (attiva dal 05/08/2026):** si applica la logica seguente; il bundle resta come feed di **primo avvio/fallback** (D-07) quando la cache non è ancora disponibile.
 
 **Fase 2 — pseudo-flusso refresh da rete** (descrittivo, non codice):
 
@@ -211,7 +211,7 @@ File JSON pubblicato a un **URL stabile** (es. `…/manifest.json`), separato da
 - **RF-05** Determinare le corse valide **per il giorno selezionato** applicando `calendar.txt` + `calendar_dates.txt` (feriale/festivo/eccezioni). Default: **oggi**.
 - **RF-10** Selezionare un **giorno diverso da oggi** (es. domani / scelta data) per consultare gli orari di quel giorno. *(Promosso a MUST su decisione D-09.)*
 - **RF-06** Funzionamento **offline** sull'ultimo feed scaricato.
-- **RF-07** Refresh **una volta al giorno** secondo la logica §1.4 (lettura manifest, confronto versione, download condizionale). *(Rinviato a **Fase 2** con D-10: non in scope nell'avvio bundle-only. RF-06 e RF-08 restano soddisfatti dal solo bundle.)*
+- **RF-07** Refresh **una volta al giorno** secondo la logica §1.4 (lettura manifest, confronto versione, download condizionale). *(**Implementato in Fase 2**, attiva dal 05/08/2026 e verificata end-to-end su device reale. In Fase 1, RF-06 e RF-08 erano comunque soddisfatti dal solo bundle.)*
 - **RF-08** Indicare all'utente la **data/versione dei dati** in uso (freschezza).
 - **RF-09** Gestire gli **stati limite**: nessuna corsa nella fascia, feed non aggiornato/scaduto, errore di rete, primo avvio (vedi sezione 3 e 4).
 
@@ -251,7 +251,7 @@ Formato: *Come utente voglio … così da …* + criteri di accettazione (CA) in
 - **CA-2.2 (When** cambio direzione **Then** la lista si aggiorna alla direzione opposta.
 - **CA-2.3** Ogni riga mostra operatore, partenza, arrivo, durata.
 
-### UC-03 — Refresh giornaliero *(Fase 2 — D-10)*
+### UC-03 — Refresh giornaliero *(Fase 2 — attiva dal 05/08/2026, D-10)*
 *Come* utente *voglio* avere orari aggiornati senza pensarci *così da* fidarmi del dato.
 - **CA-3.1 (Given** `last_check_date < oggi` e **manifest con `feed_version` più recente When** apro l'app **Then** l'app scarica e applica il nuovo feed e aggiorna l'indicatore di versione.
 - **CA-3.2 (Given** stessa `feed_version` del manifest **When** apro l'app **Then** nessun download; uso la cache; `last_check_date` diventa oggi.
@@ -273,7 +273,7 @@ Formato: *Come utente voglio … così da …* + criteri di accettazione (CA) in
 - **CA-6.1 (Given** fascia oraria/giorno senza corse (es. notte, festivo con servizio ridotto) **When** filtro **Then** vedo uno stato vuoto con messaggio chiaro ("Nessuna corsa per <giorno> dopo <ora>") e suggerimento (es. "mostra prima corsa del giorno" o "cambia giorno").
 - **CA-6.2** Lo stato vuoto distingue "nessuna corsa" da "errore dati".
 
-### UC-07 — Errore di rete durante il download del feed *(Fase 2 — D-10)*
+### UC-07 — Errore di rete durante il download del feed *(Fase 2 — attiva dal 05/08/2026, D-10)*
 - **CA-7.1 (Given** manifest letto con nuova versione ma **download feed fallito When** riprovo **Then** continuo a usare il feed precedente; nessuna corruzione della cache; messaggio non bloccante.
 - **CA-7.2 (Given** `feed_sha256` presente e **mismatch** dopo il download **Then** scarto il file scaricato e mantengo la cache.
 
@@ -517,7 +517,7 @@ FAL solo feriale (festivo = bus sostitutivo, fuori scope). Per Trenitalia solo i
 | R-06 | **Aspettativa di real-time** da parte degli utenti. | Basso | Comunicare chiaramente in UI che gli orari sono teorici (freschezza, RF-08). |
 | R-07 | **`end_date` FAL (12/12/2026) assunto** (nessuna scadenza pubblicata). | Basso/Medio | Riverificare periodicamente; se errato, il feed potrebbe mostrare corse FAL oltre la validità reale (A-08/D-11). |
 | R-08 | **Festività locali/patronali (Bari/Modugno) non modellate**: si assume che i treni circolino. | Basso | Da rivalutare con il committente (D-12); il motore copre solo le festività nazionali. |
-| R-09 | **`platform_bari_centrale` nei side-car** da OCR best-effort. | Basso | Dato extra non-MVP; da verificare prima di esporlo in app. |
+| R-09 | **`platform_bari_centrale` nei side-car** da OCR best-effort. | *Chiuso (03/08/2026)* | Nessuna fonte esterna disponibile per un controllo puntuale: accettato come limite noto. UI aggiornata (`journey_detail_sheet.dart`) con didascalia "indicativo, da verificare in stazione" quando il binario non è verificato; il binario di Modugno resta mostrato senza avviso (dichiarato con certezza dalla fonte). |
 | R-10 | **Accessibilità FAL marcata `wheelchair_accessible=2`**, valore mantenuto anche dopo verifica per scelta di modellazione (D-13). Rischio **asimmetrico** residuo: comunicare male la condizionalità (tipologia carrozzina, preavviso) può comunque escludere a torto utenti in carrozzina. | Basso *(da Medio, dopo verifica D-13)* | Comunicare in UI come "accessibile con assistenza su richiesta, verificare compatibilità carrozzina e contattare la stazione con preavviso" (RF-21), non come "non accessibile" né come dato mancante. Fonte: PDF FAL "e le persone con disabilità" (2024). |
 
 ### 9.2 Assunzioni
@@ -547,7 +547,7 @@ FAL solo feriale (festivo = bus sostitutivo, fuori scope). Per Trenitalia solo i
 - **Seed GTFS v1** (`feed_version 20260612-1`) realizzato e validato; vedi §6.5 per artefatti, provenienza reale e punti aperti.
 - **D-10 (nuova) — Avvio bundle-only a fasi.** In fase iniziale (**Fase 1**) il GTFS è incluso nel bundle ed è l'**unica fonte**; recupero da rete/hosting e manifest rinviati alla **Fase 2**. RF-06 (offline) e RF-08 (versione da `feed_info.feed_version`) restano soddisfatti dal solo bundle; **RF-07 e la logica §1.4 (passi 1–3) slittano alla Fase 2**. Estende D-07 (il bundle resta feed di primo avvio/fallback). Formato bundle: `.txt` scompattati, così lo stesso parser vale in entrambe le fasi. Vedi §1.3, §1.4, §1.5, RF-07.
 - **D-05 — CHIUSA.** Nei dati reali della relazione **non esistono corse a cavallo della mezzanotte**; il caso `≥24:00:00` non è esercitato dal seed (documentato in §6.5). La regola di derivazione resta comunque nel contratto (§5) per robustezza futura.
-- **D-08 — RINVIATA, non più bloccante.** Con l'avvio bundle-only la scelta hosting (Firebase/GitHub) non blocca l'MVP; si decide all'avvio della Fase 2.
+- **D-08 — CHIUSA (04/08/2026).** Hosting scelto: **GitHub** (repo pubblico dedicato `BinarioSudPipeline`, pubblicazione via GitHub Release), non Firebase — nessuna infrastruttura/account aggiuntivo, sufficiente per il volume dati (pochi KB, check giornaliero). Vedi changelog v1.7.
 
 **Changelog v1.4 — rilascio feed v2 (`20260618-7`):**
 - **Feed v2 completo da fonti ufficiali** (99 trips, 198 stop_times), che **supera il seed v1** e diventa il feed in bundle (§6.6).
@@ -569,9 +569,20 @@ FAL solo feriale (festivo = bus sostitutivo, fuori scope). Per Trenitalia solo i
 - **D-13 chiusa**: dato verificato (non più assunzione) + decisione di modellazione presa (valore GTFS `2` mantenuto, testo UI reso specifico sulla condizionalità). Aggiornati §1.2, §1.5, §6.6, RF-21, R-10, A-10.
 - R-10 declassato da Medio a Basso (residuo: comunicazione corretta della condizionalità in UI).
 
+**Changelog v1.7 — chiusura D-08/D-11/D-12/R-09 e avvio Fase 2:**
+- **D-08 chiusa** (04/08/2026): hosting **GitHub** (repo pubblico `BinarioSudPipeline`), `feed_url`/`feed_publisher_url` valorizzati (non più placeholder `example.com`).
+- **D-11 chiusa** (03/08/2026) con nota motivata: nessuna scadenza pubblicata da FAL; `end_date` `20261212` resta un'assunzione ma coerente con il cambio orario nazionale "Orario 2027" (13/12/2026) e con la finestra TI. Da riverificare comunque al prossimo cambio orario (vedi Allegato).
+- **D-12 chiusa** (03/08/2026): il committente conferma l'assunzione attuale — nessuna modellazione delle festività locali/patronali in `calendar_dates`.
+- **R-09 chiusa** (03/08/2026) come limite noto accettato: nessuna fonte esterna per un controllo puntuale del binario Bari Centrale (OCR); UI aggiornata con didascalia "indicativo, da verificare in stazione" (§9.1).
+- **Fase 2 (refresh da rete) attivata** (05/08/2026, D-10): RF-07 implementato secondo la logica §1.4 e verificato end-to-end su device reale con rete vera; manifest salito a `schema_version 2` (aggiunti i side-car via rete, stesso criterio cache→bundle del GTFS); RF-14 (pull-to-refresh manuale) implementato. Aggiornati §1.3, §1.4, RF-07, UC-03, UC-07.
+- **Verifica periodica delle fonti orario** (06/08/2026, lavoro nel repo pipeline `BinarioSudPipeline`): né RFI né FAL pubblicano un GTFS/API aperto per questa tratta; realizzato invece un controllo periodico con revisione umana obbligatoria (nessuna pubblicazione automatica) — vedi R-01/R-02 (§9.1).
+
 **Domande chiuse di recente:**
 
 - **D-13 — CHIUSA (ago. 2026).** L'accessibilità in carrozzina FAL è stata verificata tramite fonte ufficiale ("FAL e le persone con disabilità", PDF, aprile 2024): la fermata **Modugno risulta "con pedana"**, ma **condizionata** — assistenza disponibile solo per *"particolari tipologie di carrozzine"*, con preavviso di almeno 24 ore e presentazione in stazione 30 minuti prima della partenza. Non è quindi né un'accessibilità incondizionata (`1` TI) né un'assenza di informazioni (`0`). **Decisione di modellazione (Domanda 2, presa dal committente in questa sessione):** si mantiene `wheelchair_accessible=2` nel GTFS (nessun valore standard rappresenta un "sì condizionato"), mentre la UI dell'app comunica esplicitamente la condizionalità reale ("accessibile con assistenza su richiesta, verificare compatibilità carrozzina e contattare la stazione con preavviso"), evitando sia il messaggio "non accessibile" sia un generico "dato assente". Questa lettura estesa resta locale all'app: un consumer GTFS terzo continuerebbe a leggere `2` secondo il significato standard.
+- **D-08 — CHIUSA (04/08/2026).** Hosting: **GitHub**, repo pubblico dedicato `BinarioSudPipeline` — nessuna nuova infrastruttura/account, sufficiente per il volume dati (pochi KB, check giornaliero) via GitHub Releases.
+- **D-11 — CHIUSA (03/08/2026).** `end_date` FAL `20261212` resta un'assunzione (nessuna scadenza pubblicata da FAL), verificata come ragionevole: nessun manifesto più recente del 27/10/2025 in vigore, e coerente col cambio orario nazionale "Orario 2027" (13/12/2026, coincide con la finestra TI). Da riconfermare comunque prima del cambio orario di dicembre 2026.
+- **D-12 — CHIUSA (03/08/2026).** Festività locali/patronali (San Nicola/Bari, patrono Modugno): il committente conferma l'assunzione attuale (circolazione normale, nessuna modellazione in `calendar_dates`).
 
 **Domande ancora aperte (da sottoporre al committente):**
 
@@ -587,9 +598,6 @@ FAL solo feriale (festivo = bus sostitutivo, fuori scope). Per Trenitalia solo i
   - Le fonti sono **due o tre** (Trenitalia, FAL ed eventualmente Regione Puglia come editore), potenzialmente con licenze diverse: il feed aggregato deve rispettare la **più restrittiva** tra quelle coinvolte.
   - Scenario atteso più favorevole: **CC BY 4.0 / IODL 2.0** (sola attribuzione), anche perché la pubblicazione è spinta dal Regolamento UE 1926/2017 (punti di accesso nazionali/regionali alla mobilità). Da confermare sul caso specifico; è collegata a D-01 (licenza non nota finché il GTFS non è definito).
   *Esito:* **non bloccante per l'MVP** (non pubblicato), ma da chiudere **prima della pubblicazione**. Informazioni da raccogliere a GTFS definito: (a) licenza esatta, (b) dicitura di attribuzione richiesta, (c) permessi di redistribuzione e modifica, (d) eventuali vincoli share-alike o non commerciali.
-- **D-08** *(rinviata alla Fase 2)* Hosting **Firebase** vs **GitHub**: con l'avvio bundle-only non è più bloccante; da decidere prima di attivare il refresh da rete.
-- **D-11** *(verifica periodica)* L'`end_date` FAL **12/12/2026 è assunto**: confermare la scadenza reale del manifesto FAL ed eventualmente correggerla (R-07/A-08).
-- **D-12** Le **festività locali/patronali** (es. San Nicola a Bari, patrono di Modugno) modificano il servizio? Oggi non sono modellate (si assume circolazione normale, A-09). Se rilevanti, vanno aggiunte come eccezioni in `calendar_dates`.
 
 ---
 
@@ -599,6 +607,6 @@ FAL solo feriale (festivo = bus sostitutivo, fuori scope). Per Trenitalia solo i
 - [x] Coordinate stazioni rilevate (R-03 risolta); copertura Trenitalia completata (entrambe le direzioni, mattina inclusa).
 - [x] Sblocco **Fase 1 (bundle-only)**: app, UX e Flutter procedono sul bundle v2 (D-10).
 - [x] Accessibilità FAL `wheelchair_accessible` (D-13) — verificata e chiusa (ago. 2026).
-- [ ] **Verifiche periodiche residue:** `end_date` FAL (D-11), festività locali/patronali (D-12), `platform_bari_centrale` OCR (R-09).
-- [ ] **Prossimo cambio orario TI** (12/12/2026): rigenerare il feed con `build_gtfs.py`.
-- [ ] **Fase 2** (refresh da rete): decidere D-08, valorizzare `feed_url`/`feed_publisher_url`, attivare RF-07 e logica §1.4.
+- [x] **Verifiche periodiche residue** — chiuse (03/08/2026): `end_date` FAL (D-11, nota motivata, da riconfermare al cambio orario di dicembre), festività locali/patronali (D-12, confermata dal committente), `platform_bari_centrale` OCR (R-09, limite noto accettato).
+- [x] **Fase 2** (refresh da rete) — attiva dal 05/08/2026: D-08 chiusa (hosting GitHub), `feed_url`/`feed_publisher_url` valorizzati, RF-07 e logica §1.4 implementati e verificati su device reale; manifest `schema_version 2` con side-car via rete; RF-14 pull-to-refresh.
+- [ ] **Prossimo cambio orario TI/FAL** (12/12/2026): raccogliere i nuovi quadri RFI + manifesto FAL (da metà novembre 2026) e rigenerare il feed con `build_gtfs.py` prima della scadenza.

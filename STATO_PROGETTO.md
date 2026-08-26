@@ -98,7 +98,7 @@ intacca il requisito offline (RF-06).
 - [x] **D-08** scelta hosting — **GitHub** (repo pipeline pubblico dedicato `BinarioSudPipeline`; feed_url via `raw`/Release, non serve account/infra aggiuntiva).
 - [x] Repo pipeline creato e versionato; CI di pubblicazione pronta: `.github/workflows/publish.yml` (trigger manuale) genera GTFS, crea `dist/gtfs-<versione>.zip` + `dist/manifest.json` (`scripts/package_release.py`, contratto §1.3) e pubblica una GitHub Release (tag = `feed_version`) con i due asset; l'app leggerà sempre `.../releases/latest/download/manifest.json` (URL stabile, alias nativo di GitHub). Pubblicazione atomica (Release creata in bozza, poi resa pubblica solo a upload completato). **Prima pubblicazione reale eseguita e verificata il 04/08/2026**: Release `20260618-7` pubblicata, `.../releases/latest/download/manifest.json` raggiungibile e valido (feed_url, date di validità, size, sha256 tutti corretti).
 - [x] Corretto `feed_publisher_url` in `feed_info.txt` (era placeholder `example.com`) → URL reale del repo pipeline.
-- [ ] Lo **scraping automatico giornaliero** dai portali RFI/FAL (obiettivo del committente) è **rimandato**: `build_gtfs.py` oggi genera da dati trascritti a mano nel codice, non contatta alcuna fonte esterna — task futuro dedicato, fuori da questo step.
+- [x] **Verifica periodica fonti RFI/FAL** — chiusa (06/08/2026, nel repo pipeline). Investigazione: né RFI né FAL pubblicano un GTFS/API strutturato per questa tratta (verificato su dati.puglia.it, dati.gov.it, Mobility Database/Transitland); niente da integrare in `build_gtfs.py`. Realizzato **non** lo scraping/pubblicazione automatica originariamente ipotizzata, ma un sistema di verifica periodica con revisione umana obbligatoria — vedi Log avanzamenti.
 - [x] **RF-07** + consumo manifest lato app (§1.4) — implementato il 05/08/2026 (vedi Log avanzamenti).
 - [x] **Manifest schema_version 2 + side-car via rete** — implementato il 05/08/2026 (vedi Log avanzamenti): la pipeline ora pubblica anche `attributes-<feed_version>.zip`; l'app lo scarica, verifica e usa con lo stesso criterio di precedenza cache→bundle già in uso per il GTFS. Chiude il punto aperto precedente (side-car non più bloccati sul bundle).
 - [x] **RF-14** pull-to-refresh manuale — implementato il 05/08/2026 (vedi Log avanzamenti): `RefreshIndicator` sulla lista corse, riusa `controller.forceRefreshCheck()` (già esistente per l'hook di debug).
@@ -114,6 +114,51 @@ intacca il requisito offline (RF-06).
 > Già chiuse (non rilevare come gap): R-03 (coordinate presenti), D-06 (festività nazionali nel motore festività), D-11/D-12/D-13 (vedi sopra), R-09 (binario Bari Centrale da OCR: chiusa come limite noto, testo UI aggiornato).
 
 ## Log avanzamenti
+- **2026-08-06** — **Allineata `Specifiche_App_Orari_Modugno-Bari_MVP.md` a v1.7** (era ferma
+  a v1.6 del 03/08/2026, non rifletteva le chiusure della stessa giornata né l'avvio di
+  Fase 2). Cambiamenti: intestazione (versione/data/stato) aggiornata; §1.3/§1.4 e le
+  etichette "Fase 2" in RF-07/UC-03/UC-07 non più descritte come future ma come attive dal
+  05/08/2026; riga R-09 in §9.1 aggiornata da "da verificare" a chiusa (03/08/2026); nuovo
+  **Changelog v1.7** in §9.3 che riepiloga le chiusure di D-08 (hosting GitHub), D-11
+  (`end_date` FAL), D-12 (festività locali) e R-09, oltre all'attivazione di Fase 2 e alla
+  verifica periodica fonti RFI/FAL nel repo pipeline; D-08/D-11/D-12 spostate da "domande
+  ancora aperte" a "domande chiuse di recente" (resta aperta solo D-02, licenza); Allegato
+  — checklist finale aggiornata (spuntate le voci ora chiuse, resta aperta solo il cambio
+  orario di dicembre 2026, coerente con **P3** sopra). Individuata anche l'esistenza di una
+  **seconda copia** della spec in `Documents\BinarioSud\` (ferma a v1.5 del 19/06/2026, non
+  toccata): su richiesta dell'utente resta il **repo** (`Projects\BinarioSud\`) l'unica
+  fonte di verità per le specifiche. Nessuna modifica al codice.
+- **2026-08-06** — **Verifica periodica fonti orario RFI/FAL** — lavoro nel repo pipeline
+  `BinarioSudPipeline` (non in questo repo app). Investigazione: né RFI né FAL pubblicano
+  oggi un GTFS o un'API aperta per Modugno⇄Bari (controllato dati.puglia.it — dataset FAL
+  fermo al 2021, TI al 2024 — dati.gov.it e Mobility Database/Transitland: nessun GTFS
+  RFI-derivato per la Puglia). Realizzato quindi **non** lo scraping/pubblicazione
+  automatica ipotizzata inizialmente, ma: (1) le tabelle corse TI spostate da literal
+  Python in `build_gtfs.py` a un nuovo `data/ti_trains.json`; (2) nuovo
+  `scripts/update_ti_source.py`, che legge live i quadri orario RFI (pagine HTML
+  server-side, senza login/JS, stazioni Bari Centrale e Modugno) e aggiorna **solo** quel
+  file JSON — mai `build_gtfs.py` direttamente. Il pattern di calendario (es. feriale
+  Lun-Ven vs Lun-Sab) non è deducibile in modo affidabile dal testo libero RFI: se una
+  corsa è nuova o cambia orario, lo script scrive una sentinella `"DA_CLASSIFICARE"` che fa
+  fallire di proposito `build_gtfs.py` (`KeyError`) finché non viene classificata a mano —
+  mai un pattern indovinato automaticamente. (3) Per FAL, nessuna fonte strutturata
+  disponibile: nuovo `scripts/check_fal_source.py`, solo hash sha256 del PDF "Da e per
+  Bari" attualmente pubblicato (nessun OCR, nessuna scrittura dati). (4) Due nuovi workflow
+  schedulati mensili nel repo pipeline: `check_ti_source.yml` apre una Pull Request se
+  `data/ti_trains.json` cambia; `check_fal_source.yml` apre una issue di notifica se cambia
+  l'hash del PDF FAL (mai il contenuto, per la clausola di non redistribuzione nei Termini
+  RFI). Entrambi separati da `publish.yml`, che resta l'unico modo per pubblicare una
+  Release e resta manuale — nessuna pubblicazione automatica in nessun caso. **Validazione
+  contro dati reali**: eseguiti entrambi gli script contro RFI/FAL live; le 59 corse TI
+  attualmente in produzione corrispondono esattamente ai dati live (0 sentinelle
+  necessarie), confermando indipendentemente la trascrizione manuale esistente. Trovato e
+  corretto in sessione un bug reale nel parser HTML (alcune righe RFI usano
+  `<tr class="dispari">` invece di `<tr>` semplice: la prima versione ne leggeva solo metà,
+  segnalando erroneamente treni esistenti come "spariti" — intercettato prima di qualunque
+  commit). Aggiunta una checklist operativa nel `README.txt` della pipeline su cosa fare
+  quando compare una PR/issue (classificazione pattern, bump `feed_version`, rigenerazione,
+  commit, lancio manuale di `publish.yml`). Committato e workflow avviati nel repo
+  pipeline. Nessuna modifica al codice o ai dati di questo repo app.
 - **2026-08-05** — **Rimosso il pulsante debug "Controlla aggiornamenti ora"** dal
   pannello Info (`ui/info_sheet.dart`): ridondante rispetto al pull-to-refresh (RF-14),
   che chiama lo stesso `controller.forceRefreshCheck()` e mostra lo stesso esito in
