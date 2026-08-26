@@ -3,7 +3,7 @@
          aggiornato da rete. Non serviva in Fase 1 (bundle-only, offline). -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="binario_sud"
+        android:label="BinarioSud"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
